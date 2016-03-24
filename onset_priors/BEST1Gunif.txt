@@ -1,0 +1,115 @@
+# MODIFIED 2015-12-18 - GAR - uniform prior on mu, gamma prior on sigma
+# I used this blog post to modify the code:
+# http://doingbayesiandataanalysis.blogspot.co.uk/2015/04/informed-priors-for-bayesian-comparison.html
+# MODIFIED FROM BEST.R FOR ONE GROUP INSTEAD OF TWO.
+# Version of Dec 02, 2015.
+# John K. Kruschke
+# johnkruschke@gmail.com
+# http://www.indiana.edu/~kruschke/BEST/
+#
+# This program is believed to be free of errors, but it comes with no guarantee!
+# The user bears all responsibility for interpreting the results.
+# Please check the webpage above for updates or corrections.
+#
+### ***************************************************************
+### ******** SEE FILE BEST1Gexample.R FOR INSTRUCTIONS ************
+### ***************************************************************
+
+# source("openGraphSaveGraph.R") # graphics functions for Windows, Mac OS, Linux
+
+BEST1Gunifmcmc = function( y , unif_low , unif_high, sigmaPriorMode=sd(y) , sigmaPriorSD=sd(y)*5 ,
+                             nuPriorMean=30 , nuPriorSD=30,
+                             numSavedSteps=10000, thinSteps=1, showMCMC=FALSE) {
+  # This function generates an MCMC sample from the posterior distribution.
+  # Description of arguments:
+  # y = vector
+  # unif_low = lower bound of the mean uniform prior
+  # unif_high = upper bound of the mean uniform prior
+  # showMCMC is a flag for displaying diagnostic graphs of the chains.
+  #    If F (the default), no chain graphs are displayed. If T, they are.
+
+  require(rjags)
+
+  #------------------------------------------------------------------------------
+  # THE MODEL.
+  modelString = "
+  model {
+  for ( i in 1:Ntotal ) {
+  y[i] ~ dt( mu , 1/sigma^2 , nu )
+  }
+  #mu ~ dnorm( muPriorMean , 1/muPriorSD^2 )  # prior for mu
+  mu ~ dunif( unif_low , unif_high ) # prior for mu
+  sigma ~ dgamma( Sh , Ra )     # prior for sigma
+  nu ~ dgamma( ShNu , RaNu ) # prior for nu
+  }
+  " # close quote for modelString
+  # Write out modelString to a text file
+  writeLines( modelString , con="BESTmodel.txt" )
+
+  #------------------------------------------------------------------------------
+  # THE DATA.
+  # Load the data:
+  Ntotal = length(y)
+  # Specify the data in a list, for later shipment to JAGS:
+  dataList = list(
+    y = y ,
+    Ntotal = Ntotal ,
+    unif_low = unif_low ,
+    unif_high = unif_high ,
+    Sh = gammaShRaFromModeSD( mode=sigmaPriorMode ,
+                               sd=sigmaPriorSD )$shape ,
+    Ra = gammaShRaFromModeSD( mode=sigmaPriorMode ,
+                               sd=sigmaPriorSD )$rate ,
+    ShNu = gammaShRaFromMeanSD( mean=nuPriorMean , sd=nuPriorSD )$shape ,
+    RaNu = gammaShRaFromMeanSD( mean=nuPriorMean , sd=nuPriorSD )$rate
+  )
+
+  #------------------------------------------------------------------------------
+  # INTIALIZE THE CHAINS.
+  # Initial values of MCMC chains based on data:
+  mu = mean(y)
+  sigma = sd(y)
+  # Regarding initial values in next line: (1) sigma will tend to be too big if
+  # the data have outliers, and (2) nu starts at 5 as a moderate value. These
+  # initial values keep the burn-in period moderate.
+  initsList = list( mu = mu , sigma = sigma , nu = 5 )
+
+  #------------------------------------------------------------------------------
+  # RUN THE CHAINS
+
+  parameters = c( "mu" , "sigma" , "nu" )     # The parameters to be monitored
+  adaptSteps = 500               # Number of steps to "tune" the samplers
+  burnInSteps = 1000
+  nChains = 3
+  nIter = ceiling( ( numSavedSteps * thinSteps ) / nChains )
+  # Create, initialize, and adapt the model:
+  jagsModel = jags.model( "BESTmodel.txt" , data=dataList , inits=initsList ,
+                          n.chains=nChains , n.adapt=adaptSteps )
+  # Burn-in:
+  cat( "Burning in the MCMC chain...\n" )
+  update( jagsModel , n.iter=burnInSteps )
+  # The saved MCMC chain:
+  cat( "Sampling final MCMC chain...\n" )
+  codaSamples = coda.samples( jagsModel , variable.names=parameters ,
+                              n.iter=nIter , thin=thinSteps )
+  # resulting codaSamples object has these indices:
+  #   codaSamples[[ chainIdx ]][ stepIdx , paramIdx ]
+
+  #------------------------------------------------------------------------------
+  # EXAMINE THE RESULTS
+  if ( showMCMC ) {
+    openGraph(width=7,height=7)
+    autocorr.plot( codaSamples[[1]] , ask=FALSE )
+    show( gelman.diag( codaSamples ) )
+    effectiveChainLength = effectiveSize( codaSamples )
+    show( effectiveChainLength )
+  }
+
+  # Convert coda-object codaSamples to matrix object for easier handling.
+  # But note that this concatenates the different chains into one long chain.
+  # Result is mcmcChain[ stepIdx , paramIdx ]
+  return( codaSamples )
+
+} # end function BESTmcmc
+
+#==============================================================================

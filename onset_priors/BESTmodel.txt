@@ -1,0 +1,11 @@
+
+  model {
+    for ( i in 1:Ntotal ) {
+      y[i] ~ dt( mu , tau , nu )
+    }
+    mu ~ dnorm( muM , muP )
+    tau <- 1/pow( sigma , 2 )
+    sigma ~ dunif( sigmaLow , sigmaHigh )
+    nu ~ dexp(1/30)
+}
+  
