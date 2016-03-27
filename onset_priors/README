@@ -1,0 +1,3 @@
+R code, data and results for my blog post on processing speed priors:
+<https://garstats.wordpress.com/2016/03/25/priors-for-bayesian-estimation-of-visual-object-processing-speed-in-humans/>
+The main file is onset_priors.R
