@@ -1,5 +1,5 @@
 Data and Matlab code for my blog post on ERP differences
-<https://garstats.wordpress.com>
+<https://garstats.wordpress.com/2016/04/02/simple-steps-for-more-informative-erp-figures/>
 
 The file `erp_differences.m` generates the main figures, providing you have installed the toolbox `limo eeg`, available on github.
 <https://github.com/LIMO-EEG-Toolbox/limo_eeg>
