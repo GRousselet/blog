@@ -113,6 +113,70 @@ end
 % print(gcf, '-djpeg','-r150', fileName);
 % close(gcf)
 
+%% revisit outlier example using Cliff's delta
+
+rng(1) % set seed for reproducible results
+
+Nt = 20; % number of trials in each group
+g1 = randn(Nt,1); % group 1 = sample from a normal distribution
+g2 = randn(Nt,1); % group 2 = sample from a normal distribution
+
+cst = 2; % constant added to group 2
+outliers = [0 1 2 5 9]; % constant added to most extreme value from group 2
+Nc = numel(outliers);
+
+figure('Color','w','NumberTitle','off')
+
+for C = 1:Nc
+
+    subplot(Nc,1,C)
+    hold on
+
+    gg2 = sort(g2 + cst);
+    gg2(Nt) = gg2(Nt) + outliers(C);
+    cliffd = abs(cliffdelta(g1,gg2));
+
+    title(sprintf('Cliff''s delta = %.2f',cliffd),'FontSize',20)
+    scatter(g1,ones(Nt,1),[],'filled','MarkerEdgeColor',[0 .5 .5],'MarkerFaceColor',[0 .7 .7],'LineWidth',1.5)
+    scatter(gg2,ones(Nt,1)*2,[],'filled','MarkerEdgeColor',[1 0.1 0.1],'MarkerFaceColor',[1 0.5 0.2],'LineWidth',1.5)
+
+    set(gca,'YColor','k','FontSize',14,'YLim',[0 3],'YTick',[1 2],'YTickLabel',{'g1';'g2'},'XLim',[-2.5,13])
+
+end
+
+%% revisit outlier example using mutual information
+
+rng(1) % set seed for reproducible results
+
+Nt = 20; % number of trials in each group
+g1 = randn(Nt,1); % group 1 = sample from a normal distribution
+g2 = randn(Nt,1); % group 2 = sample from a normal distribution
+
+cst = 2; % constant added to group 2
+outliers = [0 1 2 5 9]; % constant added to most extreme value from group 2
+Nc = numel(outliers);
+
+categ = [zeros(Nt,1);ones(Nt,1)]; % declare labels for the two groups
+
+figure('Color','w','NumberTitle','off')
+
+for C = 1:Nc
+
+    subplot(Nc,1,C)
+    hold on
+
+    gg2 = sort(g2 + cst);
+    gg2(Nt) = gg2(Nt) + outliers(C);
+    mi = gcmi_cd([g1;gg2], categ, 2);
+
+    title(sprintf('Mutual information = %.2f',mi),'FontSize',20)
+    scatter(g1,ones(Nt,1),[],'filled','MarkerEdgeColor',[0 .5 .5],'MarkerFaceColor',[0 .7 .7],'LineWidth',1.5)
+    scatter(gg2,ones(Nt,1)*2,[],'filled','MarkerEdgeColor',[1 0.1 0.1],'MarkerFaceColor',[1 0.5 0.2],'LineWidth',1.5)
+
+    set(gca,'YColor','k','FontSize',14,'YLim',[0 3],'YTick',[1 2],'YTickLabel',{'g1';'g2'},'XLim',[-2.5,13])
+
+end
+
 %% Cohen'd - systematic relationship to outliers' size
 
 rng(1) % set seed for reproducible results
@@ -192,7 +256,7 @@ set(gca,'FontSize',14,'XLim',[-8 8],'XTick',-8:2:8)
 xlabel('x','FontSize',16)
 ylabel('Density function','FontSize',16)
 
-subplot(1,2,2);hold on % 1 normal distribution, 1 mixed normal distribution
+subplot(1,2,2);hold on % 1 normal distribution, 1 skewed distribution
 
 cod = abs(cohend(g1,mg2));
 
@@ -203,74 +267,18 @@ set(gca,'FontSize',14,'XLim',[-8 8],'XTick',-8:2:8)
 xlabel('x','FontSize',16)
 ylabel('Density function','FontSize',16)
 
-% fileName = 'cohend_mixed.jpg';
-% set(gcf,'PaperPositionMode','auto')
-% print(gcf,'-djpeg','-r150', fileName);
-% close(gcf)
-
-%% revisit outlier example using Cliff's delta
-
-rng(1) % set seed for reproducible results
-
-Nt = 20; % number of trials in each group
-g1 = randn(Nt,1); % group 1 = sample from a normal distribution
-g2 = randn(Nt,1); % group 2 = sample from a normal distribution
-
-cst = 2; % constant added to group 2
-outliers = [0 1 2 5 9]; % constant added to most extreme value from group 2
-Nc = numel(outliers);
-
-figure('Color','w','NumberTitle','off')
-
-for C = 1:Nc
-
-    subplot(Nc,1,C)
-    hold on
-
-    gg2 = sort(g2 + cst);
-    gg2(Nt) = gg2(Nt) + outliers(C);
-    cliffd = abs(cliffdelta(g1,gg2));
-
-    title(sprintf('Cliff''s delta = %.2f',cliffd),'FontSize',20)
-    scatter(g1,ones(Nt,1),[],'filled','MarkerEdgeColor',[0 .5 .5],'MarkerFaceColor',[0 .7 .7],'LineWidth',1.5)
-    scatter(gg2,ones(Nt,1)*2,[],'filled','MarkerEdgeColor',[1 0.1 0.1],'MarkerFaceColor',[1 0.5 0.2],'LineWidth',1.5)
-
-    set(gca,'YColor','k','FontSize',14,'YLim',[0 3],'YTick',[1 2],'YTickLabel',{'g1';'g2'},'XLim',[-2.5,13])
-
-end
-
-%% revisit outlier example using mutual information
-
-rng(1) % set seed for reproducible results
-
-Nt = 20; % number of trials in each group
-g1 = randn(Nt,1); % group 1 = sample from a normal distribution
-g2 = randn(Nt,1); % group 2 = sample from a normal distribution
-
-cst = 2; % constant added to group 2
-outliers = [0 1 2 5 9]; % constant added to most extreme value from group 2
-Nc = numel(outliers);
-
-categ = [zeros(Nt,1);ones(Nt,1)]; % declare labels for the two groups
-
-figure('Color','w','NumberTitle','off')
-
-for C = 1:Nc
-
-    subplot(Nc,1,C)
-    hold on
-
-    gg2 = sort(g2 + cst);
-    gg2(Nt) = gg2(Nt) + outliers(C);
-    mi = gcmi_cd([g1;gg2], categ, 2);
-
-    title(sprintf('Mutual information = %.2f',mi),'FontSize',20)
-    scatter(g1,ones(Nt,1),[],'filled','MarkerEdgeColor',[0 .5 .5],'MarkerFaceColor',[0 .7 .7],'LineWidth',1.5)
-    scatter(gg2,ones(Nt,1)*2,[],'filled','MarkerEdgeColor',[1 0.1 0.1],'MarkerFaceColor',[1 0.5 0.2],'LineWidth',1.5)
-
-    set(gca,'YColor','k','FontSize',14,'YLim',[0 3],'YTick',[1 2],'YTickLabel',{'g1';'g2'},'XLim',[-2.5,13])
-
-end
+% In this example, unlike Cohen'd, the same values are obtained in the two
+% situations for Cliff's delta, the KS statistic and MI. 
+% The results for Q differ very slightly:
+fprintf('------------------------------------\n')
+fprintf('norm/norm vs. norm/skew results\n')
+fprintf('d     = %.4f vs. %.4f\n',abs(cohend(g1,g2)),abs(cohend(g1,mg2)))
+fprintf('delta = %.4f vs. %.4f\n',abs(cliffdelta(g1,g2)),abs(cliffdelta(g1,mg2)))
+fprintf('KS    = %.4f vs. %.4f\n',ksstat(g1,g2),ksstat(g1,mg2))
+categ = [zeros(Nt,1);ones(Nt,1)];
+fprintf('MI    = %.4f vs. %.4f\n',gcmi_cd([g1;g2], categ, 2),gcmi_cd([g1;mg2], categ, 2))
+fprintf('Q     = %.4f vs. %.4f\n',qhat(g1,g2),qhat(g1,mg2))
+fprintf('------------------------------------\n')
 
 %% when units matter: all pairwise differences
 
@@ -286,14 +294,15 @@ g1 = sort(g1);
 yy = repmat(g2,[1 length(g1)])';
 xx = repmat(g1,[1 length(g2)]);
 alldiff = xx-yy;
+alldiff = alldiff(:);
 
 % Harrell-Davis estimate of the median of all pairwise differences
-md_alldiff = hd(alldiff(:));
-q1_alldiff = hd(alldiff(:),0.25); % 1st quartile
-q3_alldiff = hd(alldiff(:),0.75); % 3rd quartile
+md_alldiff = hd(alldiff);
+q1_alldiff = hd(alldiff,0.25); % 1st quartile
+q3_alldiff = hd(alldiff,0.75); % 3rd quartile
 
 % kernel density estimation of the distribution of differences
-kalldiff = akerd(alldiff(:));
+kalldiff = akerd(alldiff);
 
 % add jitter for illustration
 jt = 0.1; % amount of jitter for scatter plot
@@ -315,12 +324,13 @@ xlabel('Groups','FontSize',16)
 ylabel('Observations in arbitrary units','FontSize',16)
 
 subplot(1,3,[2 3]); hold on
-plot(sort(alldiff(:)),kalldiff,'k','LineWidth',3)
+plot(sort(alldiff),kalldiff,'k','LineWidth',3)
 set(gca,'FontSize',14)
 box on
 xlabel('Pairwise differences','FontSize',16)
 ylabel('Density','FontSize',16)
 v=axis;
+plot([0 0],[v(3) v(4)],'k:') % plot zero reference line
 plot([md_alldiff md_alldiff],[v(3) v(4)],'k') % plot median
 plot([q1_alldiff q1_alldiff],[v(3) v(4)],'k--') % plot 1st quartile
 plot([q3_alldiff q3_alldiff],[v(3) v(4)],'k--') % plot 3rd quartile
@@ -365,7 +375,7 @@ q = qhat(g1,g2);
 figure('Color','w','NumberTitle','off')
 hold on
 
-title(sprintf('Cd=%.0f, delta=%.0f\n MI=%.2f, KS=%.2f, Q=%.2f',cod,cliffd,mi,ks,q),'FontSize',20)
+title(sprintf('Cd=%.4f, delta=%.4f\n MI=%.2f, KS=%.2f, Q=%.2f',cod,cliffd,mi,ks,q),'FontSize',20)
 plot(sort(g1),kg1,'LineWidth',2)
 plot(sort(g2),kg2,'LineWidth',2)
 set(gca,'FontSize',14)
@@ -377,6 +387,8 @@ ylabel('Density function','FontSize',16)
 % set(gcf,'PaperPositionMode','auto')
 % print(gcf, '-djpeg','-r150', fileName);
 % close(gcf)
+
+% ksstat_fig(g1,g2)
 
 %% effect sizes as a function of variance differences
 % WARNING: Q's bias correction is very slow to compute
@@ -529,7 +541,7 @@ for C = 1:Nc
     hq(C) = qhat(g1,g2); % Q
 end
 
-save sysres hcliffd hmi hks hq Nc
+save sysres hcliffd hmi hks hq Nc simval
 
 %% PART 2 - make figure: estimator as a function of difference in means
 
@@ -561,6 +573,8 @@ for sub = 1:4
     xlabel('Difference in means','FontSize',16)
     if sub == 4
         set(gca,'YLim',[.45 1])
+    elseif sub == 2
+        set(gca,'YLim',[0 0.8])
     end
 end
 
@@ -612,13 +626,13 @@ for cond1 = 1:nc1
         end
 
         if cond1 == 1
-            set(gca,'YLim',[-0.01 1])
-            set(gca,'YTick',0:.2:1)
+            set(gca,'YLim',[-0.01 .8])
+            set(gca,'YTick',0:.2:.8)
         end
 
         if cond1 > 1 && cond2 == 1
-            set(gca,'XLim',[-0.01 1])
-            set(gca,'XTick',0:.2:1)
+            set(gca,'XLim',[-0.01 .8])
+            set(gca,'XTick',0:.2:.8)
         end
 
         ax = gca; ax.Color = [.9 .9 .9];
