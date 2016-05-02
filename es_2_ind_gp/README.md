@@ -1,5 +1,5 @@
 Matlab code for my blog post on robust measures of effect size for two independent groups:
-<https://garstats.wordpress.com>
+<https://garstats.wordpress.com/2016/05/02/robust-effect-sizes-for-2-independent-groups/>
 
 `es_2_ind_gp.m` generates all the figures presented in the post, and a few extra ones.
 `varres.mat` & `sysres.mat` contain the results of two simulations described in the m file. 
