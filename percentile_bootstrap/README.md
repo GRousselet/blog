@@ -5,8 +5,11 @@ Matlab code for my blog post on the percentile bootstrap:
 
 ## Dependencies
 To run the code, you will need functions from these toolboxes:
+
 <https://github.com/GRousselet/matlab_stats>
+
 <http://www.mathworks.com/matlabcentral/fileexchange/54243-univarscatter>
+
 However, for the purpose of this post, I have modified the main function of the `univarscatter` toolbox
 and renamed it `UnivarScatter_nofig`. So I provide the original toolbox + modified function in
 the folder for this post.
