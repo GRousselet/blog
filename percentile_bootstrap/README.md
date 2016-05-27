@@ -1,5 +1,5 @@
 Matlab code for my blog post on the percentile bootstrap:
-<https://garstats.wordpress.com/XXX/>
+<https://garstats.wordpress.com/2016/05/27/the-percentile-bootstrap/>
 
 `pb_demo.m` generates all the figures presented in the post.
 
@@ -12,7 +12,7 @@ and renamed it `UnivarScatter_nofig`. So I provide the original toolbox + modifi
 the folder for this post.
 
 ## Abbreviations
-pb = percentile bootstrap 
+pb = percentile bootstrap
 ci = confidence interval
 se = standard error
 hd = Harrell-Davis quantile estimator
