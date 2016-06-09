@@ -20,8 +20,11 @@ So if you have the Matlab toolboxes in your path, and you cd to the blog folder,
 
 ## Abbreviations
 pb = percentile bootstrap
+
 ci = confidence interval
+
 se = standard error
+
 hd = Harrell-Davis quantile estimator
 
 ## Matlab and R functions
@@ -30,14 +33,14 @@ R functions are available on Rand Wilcox’s [website](http://dornsife.usc.edu/l
 
 |Matlab function|What it computes|R function
 |-----|-----|-----|
-|`hd`|Harrell-Davis estimator|
-|`hdci`|1 quantile and its ci using a pb estimation of the se of hd|
-|`hdpbci`|1 quantile and its ci using a pb of hd|
-|`deciles`|deciles, using hd|
-|`decilesci`|deciles and their ci using a pb estimation of the se of hd|
-|`decilespbci`|deciles and their ci using a pb of hd|
-|`pbci`|pb ci of any estimator|
-|`bootse`|bootstrap estimate of the se of any estimator|
+|`hd`|Harrell-Davis estimator|`hd`|
+|`hdci`|1 quantile and its ci using a pb estimation of the se of hd|`hdci`|
+|`hdpbci`|1 quantile and its ci using a pb of hd|`qcipb`|
+|`deciles`|deciles, using hd|`deciles`|
+|`decilesci`|deciles and their ci using a pb estimation of the se of hd|not available|
+|`decilespbci`|deciles and their ci using a pb of hd|not available
+|`pbci`|pb ci of any estimator, including hd|`onesampb`|
+|`bootse`|bootstrap estimate of the se of any estimator, including hd|`bootse`|
 
 See my previous [post](https://garstats.wordpress.com/2016/05/27/the-percentile-bootstrap/) on the percentile bootstrap for a list of other Matlab and R functions to compute confidence intervals.
 
