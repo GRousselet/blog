@@ -1,5 +1,5 @@
 Matlab code for my blog post on the Harrell-Davis:
-<https://garstats.wordpress.com/2016/05/27/XXX/>
+<https://garstats.wordpress.com/2016/06/09/the-harrell-davis-quantile-estimator/>
 
 `hd_demo.m` generates all the figures presented in the post.
 The file `simres.mat` contains the results of the simulations described in the blog.
