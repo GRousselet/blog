@@ -1,4 +1,4 @@
-Matlab code for my blog post on the Harrell-Davis:
+Matlab code for my blog post on the Harrell-Davis estimator:
 <https://garstats.wordpress.com/2016/06/09/the-harrell-davis-quantile-estimator/>
 
 `hd_demo.m` generates all the figures presented in the post.
