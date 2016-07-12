@@ -223,9 +223,15 @@ ggsave(filename='shift_function_ex7_guineapigs.jpeg') #path=pathname
 # Other options to compute shift functions
 # ----------------------------------------
 
-# Shift function relying on percentile bootstrap estimates.
-# I have modified these newer functions from Wilcox, so they cannot be used
-# with the ggplot2 code yet.
+# The `shifthd` function uses a percentile bootstrap estimation of the 
+# standard error of the quantiles to compute the difference 
+# confidence intervals (Wilcox 1995).
+# An alternative strategy is to use straightforward percentile bootstrap 
+# confidence intervals (Wilcox et al. 2012, 2014).
+# I haven't modified these newer functions from Wilcox, so they cannot be used
+# yet with the ggplot2 code in `rgar_visualisation.txt`. When I make the changes,
+# they will appear in <https://github.com/GRousselet/rstats>.
+
 # `qcomhd` can be used to compare the deciles using the Harrell-Davis estimator,
 # similarly to shifhd:
 qcomhd(g1,g2,q=seq(.1,.9,.1),xlab="Control",ylab="Control-treatment");abline(0,0)
@@ -338,3 +344,4 @@ plot_grid(toprow, sf, labels = c('', 'C'), ncol = 1, nrow = 2, rel_heights = c(1
           align='h',hjust = -1)
 # save figure
 ggsave(filename='shift_function_ex11_onsets_diff_scatter.jpeg') #path=pathname
+# ggsave(filename='shift_function_ex11_onsets_diff_scatter.jpeg',width=10,height=10) #path=pathname
