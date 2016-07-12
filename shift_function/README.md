@@ -1,5 +1,5 @@
 R code for my blog post on the shift function:
-<XXX>
+<https://garstats.wordpress.com/2016/07/12/shift-function/>
 
 `shift_function_demo.R` generates all the figures presented in the post.
 All the dependencies are listed at the beginning of the file: 
