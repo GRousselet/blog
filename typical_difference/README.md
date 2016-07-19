@@ -1,5 +1,5 @@
 R code for my blog post on difference distributions:
-<XXX>
+<https://garstats.wordpress.com/2016/07/19/typical-differences/>
 
 `typical_difference_demo.R` generates all the figures presented in the post.
 
