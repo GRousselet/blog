@@ -90,7 +90,7 @@ diff_asym
 plot_grid(scat, kde.diff, sf, diff_asym, labels=c("A", "B", "C", "D"), ncol = 2, nrow = 2, rel_heights = c(1, 1),label_size = 18,hjust = -1,scale=.95)
 
 # save figure
-ggsave(filename='typical_difference_ind.jpeg') #path=pathname
+ggsave(filename='typ_diff_fig1_ind.jpeg') #path=pathname
 
 # ---------------------------------
 # Example with linear shift effect:
@@ -128,7 +128,7 @@ diff_asym <- plot.diff_asym(data=dasym$output)
 plot_grid(scat, kde.diff, sf, diff_asym, labels=c("A", "B", "C", "D"), ncol = 2, nrow = 2, rel_heights = c(1, 1),label_size = 18,hjust = -1,scale=.95)
 
 # save figure
-ggsave(filename='typical_difference_ind_linear_effect.jpeg') #path=pathname
+ggsave(filename='typ_diff_fig2_ind_linear_effect.jpeg') #path=pathname
 
 # ---------------------------------
 # Example with no effect:
@@ -166,7 +166,7 @@ diff_asym <- plot.diff_asym(data=dasym$output)
 plot_grid(scat, kde.diff, sf, diff_asym, labels=c("A", "B", "C", "D"), ncol = 2, nrow = 2, rel_heights = c(1, 1),label_size = 18,hjust = -1,scale=.95)
 
 # save figure
-ggsave(filename='typical_difference_ind_no_effect.jpeg') #path=pathname
+ggsave(filename='typ_diff_fig3_ind_no_effect.jpeg') #path=pathname
 
 # ---------------------------------
 # Another example with no effect:
@@ -202,7 +202,7 @@ diff_asym <- plot.diff_asym(data=dasym$output)
 plot_grid(kde, kde.diff, sf, diff_asym, labels=c("A", "B", "C", "D"), ncol = 2, nrow = 2, rel_heights = c(1.5, 1),label_size = 18,hjust = -1,scale=.95)
 
 # save figure
-ggsave(filename='typical_difference_ind_no_effect2.jpeg') #path=pathname
+ggsave(filename='typ_diff_fig4_ind_no_effect2.jpeg') #path=pathname
 
 # --------------------------------
 # Dependent groups 
@@ -276,7 +276,7 @@ diffstrip
 plot_grid(strip, linkedstrip, scatterdiff, diffstrip, labels=c("A", "B", "C", "D"), ncol = 2, nrow = 2, rel_heights = c(1, 1),label_size = 18,hjust = -1,scale=.95)
 
 # save figure
-ggsave(filename='typical_difference_dep_fig1.jpeg') #path=pathname
+ggsave(filename='typ_diff_fig5_dep1.jpeg') #path=pathname
 
 # ----------------------------------------------------------
 # Make figure 2: descriptions + full distribution inferences
@@ -304,12 +304,13 @@ strip.s <- strip + coord_flip()
 plot_grid(strip.s, diffstrip, sf, diff_asym, labels=c("A", "B", "C", "D"), ncol = 2, nrow = 2, rel_heights = c(1, 1),label_size = 18,hjust = -1,scale=.95)
 
 # save figure
-ggsave(filename='typical_difference_dep_fig2.jpeg') #path=pathname
+ggsave(filename='typ_diff_fig6_dep2.jpeg') #path=pathname
 
 # ----------------------------------------
 # Figure 3: deciles + confidence intervals
 
 # deciles + confidence intervals
+set.seed(3)
 out <- quantiles_pbci(paired_differences,q=seq(1,9)/10,nboot=2000,alpha=0.05)
 
 # decile plot
@@ -317,7 +318,7 @@ decile_plot <- plot.deciles(out=out,plotzero=TRUE,xtitle="Differences")
 decile_plot
 
 # save figure
-ggsave(filename='typical_difference_dep_fig3_decile_plot.jpeg') #path=pathname
+ggsave(filename='typ_diff_fig7_dep3_decile_plot.jpeg',width=5,height=5) #path=pathname
 
 # -----------------------------------
 # figure 4: asymmetric differences
@@ -347,9 +348,11 @@ diffstrip <- p + geom_jitter(position=position_jitter(0.3), size=4, stroke=1, al
 diffstrip
 
 # deciles + confidence intervals
+set.seed(3)
 out <- quantiles_pbci(spd,q=seq(1,9)/10,nboot=2000,alpha=0.05)
 
 # decile plot
+set.seed(3)
 decile_plot <- plot.deciles(out=out,plotzero=TRUE,xtitle="Differences",hjust=-.1,vjust=.2,size=5)
 decile_plot
 
@@ -363,4 +366,4 @@ diff_asym
 plot_grid(diffstrip, decile_plot, diff_asym, labels=c("A", "B", "C"), ncol = 3, nrow = 1, rel_widths = c(1,1,1),label_size = 18,hjust = -1,scale=.95)
 
 # save figure
-ggsave(filename='typical_difference_dep_fig4_larger_diff.jpeg',width=15,height=5) #path=pathname
+ggsave(filename='typ_diff_fig8_dep4_larger_diff.jpeg',width=15,height=5) #path=pathname
