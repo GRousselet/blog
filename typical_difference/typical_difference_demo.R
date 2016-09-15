@@ -209,7 +209,8 @@ ggsave(filename='typ_diff_fig4_ind_no_effect2.jpeg') #path=pathname
 # --------------------------------
 
 # load data
-df <- readRDS("paired_example.rds")
+load("paired_example.RData") # pdata
+df <- pdata
 
 # --------------------------------
 # Make figure 5: data descriptions
