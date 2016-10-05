@@ -228,9 +228,10 @@ ggsave(filename='shift_function_ex7_guineapigs.jpeg') #path=pathname
 # confidence intervals (Wilcox 1995).
 # An alternative strategy is to use straightforward percentile bootstrap 
 # confidence intervals (Wilcox et al. 2012, 2014).
-# I haven't modified these newer functions from Wilcox, so they cannot be used
-# yet with the ggplot2 code in `rgar_visualisation.txt`. When I make the changes,
-# they will appear in <https://github.com/GRousselet/rstats>.
+# I have modified these newer functions from Wilcox, so they can be used
+# with the ggplot2 function plot.pbsf() in `rgar_visualisation.txt`. 
+# The modified functions qcomhd() and Dqcomhd() are in `wilcox_modified.txt`
+# here <https://github.com/GRousselet/rstats>.
 
 # `qcomhd` can be used to compare the deciles using the Harrell-Davis estimator,
 # similarly to shifhd:
