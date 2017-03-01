@@ -50,6 +50,15 @@ for B = 1:Nb
     
 end
 
+%% bootstrap without loop
+% Cyril Pernet rightly pointed out on Twitter that the loop is unnecessary:
+bootsamples = randi(Np,Np,Nb);
+bc1 = Spearman(a(bootsamples),b(bootsamples),0);
+bc2 = Spearman(a(bootsamples),c(bootsamples),0);
+
+% The bootstrap loop does make the bootstrap procedure more intuitive
+% though, especially for new users. 
+
 %% confidence intervals
 
 alpha = 0.05; % probability coverage - 0.05 for 95% CI
