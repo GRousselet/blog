@@ -174,3 +174,11 @@ plot([diffci(1) diffci(1)],[v(3) v(4)],'k')
 plot([diffci(2) diffci(2)],[v(3) v(4)],'k')
 plot([0 0],[v(3) v(4)],'k--','LineWidth',3)
 set(gca,'FontSize',14,'Layer','Top')
+
+%% highest-density interval
+% A HDI can be calculated suing the hdi() function
+% the hdi() function is available on github:
+% <https://github.com/GRousselet/matlab_stats>
+
+credmass = 0.8; % mass within interval = scalar between 0 and 1
+bootdiff_hdi = hdi(bootdiff, credmass);
