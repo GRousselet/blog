@@ -1,0 +1,268 @@
+# Subset of functions needed to call akerd().
+# From Rand Wilcox’s Rallfun-v34.txt file.
+# https://dornsife.usc.edu/labs/rwilcox/software/
+
+akerd<-function(xx,hval=NA,aval=.5,op=1,fr=.8,pyhat=FALSE,pts=NA,plotit=TRUE,
+xlab="",ylab="",zlab="",theta=50,phi=25,expand=.5,scale=TRUE,ticktype="simple",color='black'){
+#
+# Compute adaptive kernel density estimate
+# 
+# (See Silverman, 1986)
+#
+# op=1 Use expected frequency as initial estimate of the density
+# op=2 Univariate case only
+#      Use normal kernel to get initial estimate of the density
+#  ticktype="detailed" will create ticks as done for a two-dimensional plot
+#
+#  Note, when pyhat=T, returns estimate of density at points if pts AFTER
+#  putting the points in ascending order.
+#
+xx=elimna(xx)
+fval<-"Done"
+if(is.matrix(xx)){
+if(ncol(xx)>1)fval<-akerdmul(xx,pts=pts,hval=hval,aval=aval,fr=fr,pr=pyhat,
+plotit=plotit,theta=theta,phi=phi,expand=expand,scale=scale,ticktype=ticktype)
+plotit<-F
+}
+if(is.matrix(xx) && ncol(xx)==1)xx<-xx[,1]
+if(!is.matrix(xx)){
+x<-sort(xx)
+if(op==1){
+m<-mad(x)
+if(m==0){
+temp<-idealf(x)
+m<-(temp$qu-temp$ql)/(qnorm(.75)-qnorm(.25))
+}
+if(m==0)m<-sqrt(winvar(x)/.4129)
+if(m==0)stop("All measures of dispersion are equal to 0")
+fhat <- rdplot(x,pyhat=TRUE,plotit=FALSE,fr=fr)
+if(m>0)fhat<-fhat/(2*fr*m)
+}
+if(op==2){
+init<-density(xx)
+fhat <- init$y
+x<-init$x
+}
+n<-length(x)
+if(is.na(hval)){
+sig<-sqrt(var(x))
+temp<-idealf(x)
+iqr<-(temp$qu-temp$ql)/1.34
+A<-min(c(sig,iqr))
+if(A==0)A<-sqrt(winvar(x))/.64
+hval<-1.06*A/length(x)^(.2)
+# See Silverman, 1986, pp. 47-48
+}
+gm<-exp(mean(log(fhat[fhat>0])))
+alam<-(fhat/gm)^(0-aval)
+dhat<-NA
+if(is.na(pts[1]))pts<-x
+pts<-sort(pts)
+for(j in 1:length(pts)){
+temp<-(pts[j]-x)/(hval*alam)
+epan<-ifelse(abs(temp)<sqrt(5),.75*(1-.2*temp^2)/sqrt(5),0)
+dhat[j]<-mean(epan/(alam*hval))
+}
+if(plotit){
+plot(pts,dhat,type="n",ylab=ylab,xlab=xlab)
+lines(pts,dhat,col=color)
+}
+if(pyhat)fval<-dhat
+}
+fval
+}
+
+akerdmul<-function(x,pts=NA,hval=NA,aval=.5,fr=.8,pr=FALSE,plotit=TRUE,theta=50,
+phi=25,expand=.5,scale=FALSE,xlab="X",ylab="Y",zlab="",ticktype="simple"){
+#
+# Compute adaptive kernel density estimate
+# for multivariate data
+# (See Silverman, 1986)
+#
+#  Use expected frequency as initial estimate of the density
+#
+# hval is the span used by the kernel density estimator
+# fr is the span used by the expected frequency curve
+# pr=T, returns density estimates at pts
+# ticktype="detailed" will create ticks as done in two-dimensional plot
+#
+library(MASS)
+library(akima)
+if(is.na(pts[1]))pts<-x
+if(ncol(x)!=ncol(pts))stop("Number of columns for x and pts do not match")
+if(!is.matrix(x))stop("Data should be stored in a matrix")
+fhat <- rdplot(x,pyhat=TRUE,plotit=FALSE,fr=fr)
+n<-nrow(x)
+d<-ncol(x)
+pi<-gamma(.5)^2
+cd<-c(2,pi)
+if(d==2)A<-1.77
+if(d==3)A<-2.78
+if(d>2){
+for(j in 3:d)cd[j]<-2*pi*cd[j-2]/n  # p. 76
+}
+if(d>3)A<-(8*d*(d+2)*(d+4)*(2*sqrt(pi))^d)/((2*d+1)*cd[d])  # p. 87
+if(is.na(hval))hval<-A*(1/n)^(1/(d+4))  # Silverman, p. 86
+svec<-NA
+for(j in 1:d){
+sig<-sqrt(var(x[,j]))
+temp<-idealf(x[,j])
+iqr<-(temp$qu-temp$ql)/1.34
+A<-min(c(sig,iqr))
+x[,j]<-x[,j]/A
+svec[j]<-A
+}
+hval<-hval*sqrt(mean(svec^2)) # Silverman, p. 87
+# Now do adaptive; see Silverman, 1986, p. 101
+gm<-exp(mean(log(fhat[fhat>0])))
+alam<-(fhat/gm)^(0-aval)
+dhat<-NA
+nn<-nrow(pts)
+for(j in 1:nn){
+temp1<-t(t(x)-pts[j,])/(hval*alam)
+temp1<-temp1^2
+temp1<-apply(temp1,1,FUN="sum")
+temp<-.5*(d+2)*(1-temp1)/cd[d]
+epan<-ifelse(temp1<1,temp,0) # Epanechnikov kernel, p. 76
+dhat[j]<-mean(epan/(alam*hval)^d)
+}
+if(plotit && d==2){
+fitr<-dhat
+iout<-c(1:length(fitr))
+nm1<-length(fitr)-1
+for(i in 1:nm1){
+ip1<-i+1
+for(k in ip1:length(fitr))if(sum(x[i,]==x[k,])==2)iout[k]<-0
+}
+fitr<-fitr[iout>=1]
+mkeep<-x[iout>=1,]
+fit<-interp(mkeep[,1],mkeep[,2],fitr)
+persp(fit,theta=theta,phi=phi,xlab=xlab,ylab=ylab,zlab=zlab,expand=expand,
+scale=scale,ticktype=ticktype)
+}
+m<-"Done"
+if(pr)m<-dhat
+m
+}
+
+elimna<-function(m){
+#
+# remove any rows of data having missing values
+#
+DONE=FALSE
+if(is.list(m) && is.matrix(m)){
+z=pool.a.list(m)
+m=matrix(z,ncol=ncol(m))
+DONE=TRUE
+}
+if(!DONE){
+if(is.list(m) && is.matrix(m[[1]])){
+for(j in 1:length(m))m[[j]]=na.omit(m[[j]])
+e=m
+DONE=TRUE
+}}
+if(!DONE){
+if(is.list(m) && is.null(dim(m))){ #!is.matrix(m))
+for(j in 1:length(m))m[[j]]=as.vector(na.omit(m[[j]]))
+e=m
+DONE=TRUE
+}}
+if(!DONE){
+#if(!is.list(m)){
+#if(is.null(dim(m)))
+m<-as.matrix(m)
+ikeep<-c(1:nrow(m))
+for(i in 1:nrow(m))if(sum(is.na(m[i,])>=1))ikeep[i]<-0
+e<-m[ikeep[ikeep>=1],]
+#}
+}
+e
+}
+
+idealf<-function(x,na.rm=FALSE){
+#
+# Compute the ideal fourths for data in x
+#
+if(na.rm)x<-x[!is.na(x)]
+j<-floor(length(x)/4 + 5/12)
+y<-sort(x)
+g<-(length(x)/4)-j+(5/12)
+ql<-(1-g)*y[j]+g*y[j+1]
+k<-length(x)-j+1
+qu<-(1-g)*y[k]+g*y[k-1]
+list(ql=ql,qu=qu)
+}
+
+rdplot<-function(x,fr=NA,plotit=TRUE,theta=50,phi=25,expand=.5,pyhat=FALSE,pts=NA,
+xlab="X",ylab="",ticktype="simple"){
+#
+# Expected frequency curve
+#
+# fr controls amount of smoothing
+#  theta is the azimuthal direction and phi the colatitude
+#
+plotit<-as.logical(plotit)
+x<-elimna(x)
+x<-as.matrix(x)
+rmd<-NA
+if(ncol(x)==1){
+if(is.na(fr))fr<-.8
+if(is.na(pts[1]))pts<-x
+for(i in 1:length(pts)){
+rmd[i]<-sum(near(x,pts[i],fr))
+}
+if(mad(x)!=0)rmd<-rmd/(2*fr*mad(x))
+rmd<-rmd/length(x)
+if(plotit){
+plot(pts,rmd,type="n",ylab=ylab,xlab=xlab)
+sx<-sort(pts)
+xorder<-order(pts)
+sysm<-rmd[xorder]
+lines(sx,sysm)
+}}
+if(ncol(x)>1){
+library(MASS)
+if(is.na(fr))fr<-.6
+m<-cov.mve(x)
+for(i in 1:nrow(x)){
+rmd[i]<-sum(near3d(x,x[i,],fr,m))
+}
+rmd<-rmd/nrow(x)
+if(plotit && ncol(x)==2){
+library(akima)
+fitr<-rmd
+iout<-c(1:length(fitr))
+nm1<-length(fitr)-1
+for(i in 1:nm1){
+ip1<-i+1
+for(k in ip1:length(fitr))if(sum(x[i,]==x[k,])==2)iout[k]<-0
+}
+fitr<-fitr[iout>=1]
+mkeep<-x[iout>=1,]
+fit<-interp(mkeep[,1],mkeep[,2],fitr)
+persp(fit,theta=theta,phi=phi,expand=expand,xlab="Var 1",ylab="Var 2",zlab="",
+ticktype=ticktype)
+}
+}
+if(pyhat)last<-rmd
+if(!pyhat)last<-"Done"
+last
+}
+
+near<-function(x,pt,fr=1){
+# determine which values in x are near pt
+# based on fr * mad
+#flagNA=which(is.na(x))
+#remx=x
+#x=elimna(x)
+m<-mad(x)
+if(m==0){
+temp<-idealf(x)
+m<-(temp$qu-temp$ql)/(qnorm(.75)-qnorm(.25))
+}
+if(m==0)m<-sqrt(winvar(x)/.4129)
+if(m==0)stop("All measures of dispersion are equal to 0")
+dis<-abs(x-pt)
+dflag<-dis <= fr*m
+dflag
+}
