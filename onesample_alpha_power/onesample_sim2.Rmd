@@ -391,6 +391,8 @@ pg.m0 <- ggplot(df, aes(x, y, group = g)) +
   labs(x = "Sample size", y = "False positive\nprobability", title = "Mean") +
   guides(colour = guide_legend(override.aes = list(size = 3)))
 pg.m0
+# save figure
+ggsave(filename='figure_alpha_g_mean.jpg',width=7,height=5)
 
 # 20% TRIMMED MEAN
 # create data frame
@@ -414,6 +416,8 @@ pg.tm0 <- ggplot(df, aes(x, y, group = g)) +
   labs(x = "Sample size", y = "False positive\nprobability", title = "20% Trimmed Mean") +
   guides(colour = guide_legend(override.aes = list(size = 3)))
 pg.tm0
+# save figure
+ggsave(filename='figure_alpha_g_tmean.jpg',width=7,height=5)
 
 # MEDIAN
 # create data frame
@@ -437,6 +441,8 @@ pg.md0 <- ggplot(df, aes(x, y, group = g)) +
   labs(x = "Sample size", y = "False positive\nprobability", title = "Median") +
   guides(colour = guide_legend(override.aes = list(size = 3)))
 pg.md0
+# save figure
+ggsave(filename='figure_alpha_g_median.jpg',width=7,height=5)
 
 ```
 
@@ -466,6 +472,7 @@ pg.m1 <- ggplot(df, aes(x, y, group = g)) +
   labs(x = "Sample size", y = "True positive\nprobability", title = "Mean") +
   guides(colour = guide_legend(override.aes = list(size = 3)))
 pg.m1
+ggsave(filename='figure_power_g_mean.jpg',width=7,height=5)
 
 # 20% TRIMMED MEAN
 # create data frame
@@ -488,6 +495,7 @@ pg.tm1 <- ggplot(df, aes(x, y, group = g)) +
   labs(x = "Sample size", y = "True positive\nprobability", title = "20% Trimmed Mean") +
   guides(colour = guide_legend(override.aes = list(size = 3)))
 pg.tm1
+ggsave(filename='figure_power_g_tmean.jpg',width=7,height=5)
 
 # MEDIAN
 # create data frame
@@ -510,6 +518,7 @@ pg.md1 <- ggplot(df, aes(x, y, group = g)) +
   labs(x = "Sample size", y = "True positive\nprobability", title = "Median") +
   guides(colour = guide_legend(override.aes = list(size = 3)))
 pg.md1
+ggsave(filename='figure_power_g_median.jpg',width=7,height=5)
 
 ```
 
@@ -540,6 +549,8 @@ ph.m0 <- ggplot(df, aes(x, y, group = h)) +
   labs(x = "Sample size", y = "False positive\nprobability", title = "Mean") +
   guides(colour = guide_legend(override.aes = list(size = 3)))
 ph.m0
+# save figure
+ggsave(filename='figure_alpha_h_mean.jpg',width=7,height=5)
 
 # 20% TRIMMED MEAN
 # create data frame
@@ -563,6 +574,8 @@ ph.tm0 <- ggplot(df, aes(x, y, group = h)) +
   labs(x = "Sample size", y = "False positive\nprobability", title = "20% Trimmed Mean") +
   guides(colour = guide_legend(override.aes = list(size = 3)))
 ph.tm0
+# save figure
+ggsave(filename='figure_alpha_h_tmean.jpg',width=7,height=5)
 
 # MEDIAN
 # create data frame
@@ -586,6 +599,8 @@ ph.md0 <- ggplot(df, aes(x, y, group = h)) +
   labs(x = "Sample size", y = "False positive\nprobability", title = "Median") +
   guides(colour = guide_legend(override.aes = list(size = 3)))
 ph.md0
+# save figure
+ggsave(filename='figure_alpha_h_median.jpg',width=7,height=5)
 
 ```
 
@@ -615,6 +630,7 @@ ph.m1 <- ggplot(df, aes(x, y, group = h)) +
   labs(x = "Sample size", y = "True positive\nprobability", title = "Mean") +
   guides(colour = guide_legend(override.aes = list(size = 3)))
 ph.m1
+ggsave(filename='figure_power_h_mean.jpg',width=7,height=5)
 
 # 20% TRIMMED MEAN
 # create data frame
@@ -637,6 +653,7 @@ ph.tm1 <- ggplot(df, aes(x, y, group = h)) +
   labs(x = "Sample size", y = "True positive\nprobability", title = "20% Trimmed Mean") +
   guides(colour = guide_legend(override.aes = list(size = 3)))
 ph.tm1
+ggsave(filename='figure_power_h_tmean.jpg',width=7,height=5)
 
 # MEDIAN
 # create data frame
@@ -659,6 +676,7 @@ ph.md1 <- ggplot(df, aes(x, y, group = h)) +
   labs(x = "Sample size", y = "True positive\nprobability", title = "Median") +
   guides(colour = guide_legend(override.aes = list(size = 3)))
 ph.md1
+ggsave(filename='figure_power_h_median.jpg',width=7,height=5)
 
 ```
 
