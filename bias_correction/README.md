@@ -1,5 +1,5 @@
-R code, notebook and figures for my blog post on bootstrap bias correction:
-<>
+R code and notebook for my blog post on bootstrap bias correction:
+<https://garstats.wordpress.com/2018/01/23/bias-correction/>
 
 `bcdemo.Rmd` generates all the figures presented in the post, and the notebook `bcdemo.pdf`.
 
