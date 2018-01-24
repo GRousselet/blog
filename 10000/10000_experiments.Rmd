@@ -1,0 +1,1091 @@
+---
+title: "What can we learn from 10,000 experiments?"
+author: "Guillaume A. Rousselet"
+output:
+  pdf_document:
+    fig_caption: yes
+    number_sections: no
+    toc: yes
+---
+
+---
+```{r message=FALSE}
+rm(list=ls())
+# dependencies
+library(ggplot2)
+library(tibble)
+library(tidyr)
+library(viridis)
+source("akerd.txt")
+source("HDIofMCMC.R")
+```
+
+# Lexical decision data
+Data from the [French Lexicon Project](https://sites.google.com/site/frenchlexicon/results).
+Click on "French Lexicon Project trial-level results with R scripts.zip".
+Data were saved using `getflprtdata.Rmd`.
+
+Ferrand, L., New, B., Brysbaert, M., Keuleers, E., Bonin, P., Meot, A., Augustinova, M. & Pallier, C. (2010) The French Lexicon Project: lexical decision data for 38,840 French words and 38,840 pseudowords. Behav Res Methods, 42, 488-496.
+
+```{r}
+# get data - tibble = `flp`
+load("./french_lexicon_project_rt_data.RData")
+# columns =
+#1 = participant
+#2 = rt
+#3 = acc = accuracy 0/1
+#4 = condition = word/non-word
+```
+
+N = `r length(unique(flp$participant))` participants.
+
+# Illustrate results for a few random participants
+
+Word / non-word comparison:
+
+```{r eval=TRUE}
+
+set.seed(7)
+
+# select participants
+p.list <- unique(flp$participant)
+sp <- p.list[sample(length(p.list), 3, replace=FALSE)]
+
+for(iter in 1:length(sp)){
+# make KDE
+flp.w <- sort(flp$rt[flp$participant==sp[iter] & flp$condition=="word"])
+flp.nw <- sort(flp$rt[flp$participant==sp[iter] & flp$condition=="non-word"])
+a.flp.w <- akerd(flp.w, pyhat = TRUE, plotit = FALSE)
+a.flp.nw <- akerd(flp.nw, pyhat = TRUE, plotit = FALSE)
+
+# create data frame
+df <- tibble(`x`=c(flp.w,flp.nw),
+             `y`=c(a.flp.w,a.flp.nw),
+             `Condition`=c(rep.int("Word",length(flp.w)),
+                           rep.int("Non-word",length(flp.nw))))
+# make plot
+df$Condition <- as.character(df$Condition)
+df$Condition <- factor(df$Condition, levels=unique(df$Condition))
+
+# make plot
+p <- ggplot(df, aes(x,y, group=Condition)) + theme_classic() +
+  geom_line(aes(colour=Condition), size = 1.5) + # linetype=Condition, 
+  # scale_size_manual(values=c(1,0.5)) +
+  # scale_linetype_manual(values=c("solid","solid")) +
+  scale_color_manual(values=c("grey30", "#E69F00")) + #, "#56B4E9","black")) +
+  scale_x_continuous(limits=c(0,2000), breaks=seq(0,2000,500), minor_breaks = waiver()) +
+  theme(plot.title = element_text(size=22),
+        axis.title.x = element_text(size = 18),
+        axis.text = element_text(size = 16, colour = "black"),
+        axis.title.y = element_text(size = 18),
+        legend.text = element_text(size = 16),
+        legend.title = element_text(size = 18),
+        legend.key.width = unit(1.5,"cm"),
+        legend.position = c(0.75,0.8),
+        strip.text.y = element_text(size = 18, face = "bold", angle = 0)) +
+        # legend.position = c(0.25,0.9)) +
+  labs(x = "Reaction times", y = "Density") +
+  ggtitle(paste0("Lexical decision: P",sp[iter]))
+p
+# save figure
+ggsave(filename=paste0('./figure_flp_p',sp[iter],'.jpg'),width=10,height=7) #path=pathname
+}
+```
+
+# Illustrate group results
+
+## Number of trials per participant
+```{r}
+# get data: median RT for every participant
+ntrials <- tapply(flp$rt, list(flp$participant, flp$condition), length)
+summary(ntrials)
+```
+
+## Summary statistics for RT data
+```{r}
+# get data: median RT for every participant
+medres <- tapply(flp$rt, list(flp$participant, flp$condition), median)
+summary(medres)
+```
+```{r}
+# get data: mean RT for every participant
+meanres <- tapply(flp$rt, list(flp$participant, flp$condition), mean)
+summary(meanres)
+```
+
+## Save population results (all trials, all participants)
+```{r}
+pop.m.w <- mean(meanres[,1])
+pop.m.nw <- mean(meanres[,2])
+pop.m.diff <- mean(meanres[,2] - meanres[,1])
+pop.md.w <- median(medres[,1])
+pop.md.nw <- median(medres[,2])
+pop.md.diff <- median(medres[,2] - medres[,1])
+```
+
+## Word and non-word conditions
+
+### Distributions of median RT
+```{r}
+# make KDE
+flp.w <- sort(medres[,1])
+flp.nw <- sort(medres[,2])
+a.flp.w <- akerd(flp.w, pyhat = TRUE, plotit = FALSE)
+a.flp.nw <- akerd(flp.nw, pyhat = TRUE, plotit = FALSE)
+
+# create data frame
+df <- tibble(`x`=c(flp.w,flp.nw),
+             `y`=c(a.flp.w,a.flp.nw),
+             `Condition`=c(rep.int("Word",length(flp.w)),
+                           rep.int("Non-word",length(flp.nw))))
+# make plot
+df$Condition <- as.character(df$Condition)
+df$Condition <- factor(df$Condition, levels=unique(df$Condition))
+
+# make plot
+p <- ggplot(df, aes(x,y, group=Condition)) + theme_classic() + 
+  geom_line(aes(colour=Condition), size = 1.5) + # linetype=Condition, 
+  # scale_size_manual(values=c(1,0.5)) +
+  # scale_linetype_manual(values=c("solid","solid")) +
+  scale_color_manual(values=c("grey30", "#E69F00")) + #, "#56B4E9","black")) + grey #999999
+  scale_x_continuous(limits=c(0,1600), breaks=seq(0,1600,250), minor_breaks = waiver()) +
+  theme(plot.title = element_text(size=22),
+        axis.title.x = element_text(size = 18),
+        axis.text = element_text(size = 16, colour = "black"),
+        axis.title.y = element_text(size = 18),
+        legend.key.width = unit(1.5,"cm"),
+        legend.position = c(0.75,0.8),
+        legend.title = element_text(size=16),
+        legend.text = element_text(size = 14),
+        strip.text.y = element_text(size = 18, face = "bold", angle = 0)) +
+        # legend.position = c(0.25,0.9)) +
+  labs(x = "Reaction times", y = "Density") +
+  ggtitle("Median reaction times")
+p
+# save figure
+ggsave(filename='./figure_all_p_medians.jpg',width=10,height=7) #path=pathname
+```
+
+### Distribution of differences: non-word - word
+```{r}
+# make KDE
+diff <- sort(flp.nw - flp.w)
+a.diff <- akerd(diff, pyhat = TRUE, plotit = FALSE)
+
+# create data frame
+df <- tibble(`x`=diff,
+             `y`=a.diff)
+# make plot
+p <- ggplot(df, aes(x,y)) + theme_classic() + 
+  geom_line(colour="grey30", size = 1.5) + # linetype=Condition, 
+  scale_x_continuous(limits=c(0,300), breaks=seq(0,300,50), minor_breaks = waiver()) +
+  theme(plot.title = element_text(size=22),
+        axis.title.x = element_text(size = 18),
+        axis.text = element_text(size = 16, colour = "black"),
+        axis.title.y = element_text(size = 18),
+        legend.key.width = unit(1.5,"cm"),
+        legend.position = c(0.75,0.8),
+        legend.title = element_text(size=16),
+        legend.text = element_text(size = 14),
+        strip.text.y = element_text(size = 18, face = "bold", angle = 0)) +
+        # legend.position = c(0.25,0.9)) +
+  labs(x = "Median reaction times", y = "Density") +
+  ggtitle("Median differences")
+p
+# save figure
+ggsave(filename='./figure_all_p_median_diff.jpg',width=10,height=7) #path=pathname
+```
+
+### Distributions of mean RT
+```{r}
+# make KDE
+flp.w <- sort(meanres[,1])
+flp.nw <- sort(meanres[,2])
+a.flp.w <- akerd(flp.w, pyhat = TRUE, plotit = FALSE)
+a.flp.nw <- akerd(flp.nw, pyhat = TRUE, plotit = FALSE)
+
+# create data frame
+df <- tibble(`x`=c(flp.w,flp.nw),
+             `y`=c(a.flp.w,a.flp.nw),
+             `Condition`=c(rep.int("Word",length(flp.w)),
+                           rep.int("Non-word",length(flp.nw))))
+# make plot
+df$Condition <- as.character(df$Condition)
+df$Condition <- factor(df$Condition, levels=unique(df$Condition))
+
+# make plot
+p <- ggplot(df, aes(x,y, group=Condition)) + theme_classic() + 
+  geom_line(aes(colour=Condition), size = 1.5) + # linetype=Condition, 
+  # scale_size_manual(values=c(1,0.5)) +
+  # scale_linetype_manual(values=c("solid","solid")) +
+  scale_color_manual(values=c("grey30", "#E69F00")) + #, "#56B4E9","black")) + grey #999999
+  scale_x_continuous(limits=c(0,1600), breaks=seq(0,1600,250), minor_breaks = waiver()) +
+  theme(plot.title = element_text(size=22),
+        axis.title.x = element_text(size = 18),
+        axis.text = element_text(size = 16, colour = "black"),
+        axis.title.y = element_text(size = 18),
+        legend.key.width = unit(1.5,"cm"),
+        legend.position = c(0.75,0.8),
+        legend.title = element_text(size=16),
+        legend.text = element_text(size = 14),
+        strip.text.y = element_text(size = 18, face = "bold", angle = 0)) +
+        # legend.position = c(0.25,0.9)) +
+  labs(x = "Reaction times", y = "Density") +
+  ggtitle("Mean reaction times")
+p
+# save figure
+ggsave(filename='./figure_all_p_means.jpg',width=10,height=7) #path=pathname
+```
+
+### Distribution of differences: non-word - word
+```{r}
+# make KDE
+diff <- sort(flp.nw - flp.w)
+a.diff <- akerd(diff, pyhat = TRUE, plotit = FALSE)
+
+# create data frame
+df <- tibble(`x`=diff,
+             `y`=a.diff)
+# make plot
+p <- ggplot(df, aes(x,y)) + theme_classic() + 
+  geom_line(colour="grey30", size = 1.5) + # linetype=Condition, 
+  scale_x_continuous(limits=c(0,300), breaks=seq(0,300,50), minor_breaks = waiver()) +
+  theme(plot.title = element_text(size=22),
+        axis.title.x = element_text(size = 18),
+        axis.text = element_text(size = 16, colour = "black"),
+        axis.title.y = element_text(size = 18),
+        legend.key.width = unit(1.5,"cm"),
+        legend.position = c(0.75,0.8),
+        legend.title = element_text(size=16),
+        legend.text = element_text(size = 14),
+        strip.text.y = element_text(size = 18, face = "bold", angle = 0)) +
+        # legend.position = c(0.25,0.9)) +
+  labs(x = "Mean reaction times", y = "Density") +
+  ggtitle("Mean differences")
+p
+# save figure
+ggsave(filename='./figure_all_p_mean_diff.jpg',width=10,height=7) #path=pathname
+```
+
+How to take random samples of trials and participants
+```{r}
+set.seed(21)
+
+p.list <- unique(flp$participant)
+nmax <- length(p.list)
+
+# get data: random selection of 100 trials + median for every participant
+nT <- 100
+nP <- 20
+medres <- tapply(flp$rt, 
+                 list(flp$participant, flp$condition), 
+                 function(s) median(sample(s, nT, replace=TRUE)) )
+# summary statistics across all participants
+summary(medres)
+# summary statistics for a random selection of nP participants
+summary(medres[sample(nmax,nP,replace=FALSE),])
+```
+
+# 10,000 experiments: random sample of participants only
+We use all the trials available for each participant but vary how many participants we sample.
+```{r eval=TRUE}
+set.seed(21)
+
+p.list <- unique(flp$participant)
+nmax <- length(p.list)
+nsim <- 10000
+pvec <- seq(10,100,10) # number of participants
+
+sim.m.w <- matrix(0, nrow = nsim, ncol = length(pvec))
+sim.m.nw <- matrix(0, nrow = nsim, ncol = length(pvec))
+sim.m.diff <- matrix(0, nrow = nsim, ncol = length(pvec))
+sim.md.w <- matrix(0, nrow = nsim, ncol = length(pvec))
+sim.md.nw <- matrix(0, nrow = nsim, ncol = length(pvec))
+sim.md.diff <- matrix(0, nrow = nsim, ncol = length(pvec))
+
+# use all trials and compute mean and median
+  m.res <- tapply(flp$rt, 
+                 list(flp$participant, flp$condition), 
+                 mean)
+  md.res <- tapply(flp$rt, 
+                 list(flp$participant, flp$condition), 
+                 median)
+
+for(iter.n in 1:length(pvec)){
+    print(paste("Sample size = ",pvec[iter.n],"..."))
+ 
+  # sample participants with replacement and compute group mean and median
+  mc.samp <- sample(nmax, pvec[iter.n]*nsim, replace=TRUE)
+  
+  # group mean
+  sim.m.w[,iter.n] <- apply(matrix(m.res[mc.samp,1], nrow = nsim), 1, mean) # word
+  sim.m.nw[,iter.n] <- apply(matrix(m.res[mc.samp,2], nrow = nsim), 1, mean) # non-word
+  sim.m.diff[,iter.n] <- apply(matrix(m.res[mc.samp,2] - m.res[mc.samp,1], 
+                                   nrow = nsim), 1, mean) # difference
+  
+  # group median
+  sim.md.w[,iter.n] <- apply(matrix(md.res[mc.samp,1], nrow = nsim), 1, median) # word
+  sim.md.nw[,iter.n] <- apply(matrix(md.res[mc.samp,2], nrow = nsim), 1, median) # non-word
+  sim.md.diff[,iter.n] <- apply(matrix(md.res[mc.samp,2] - md.res[mc.samp,1], 
+                                    nrow = nsim), 1, median) # difference
+}
+```
+
+## Word: median
+Make KDE:
+```{r eval=FALSE}
+x <- sim.md.w
+y <- sim.md.w
+for(iter.n in 1:length(pvec)){
+  x[,iter.n] <- sort(x[,iter.n])  
+  y[,iter.n] <- akerd(x[,iter.n], pyhat = TRUE, plotit = FALSE)
+}
+save(
+  x,
+  y,
+  file = "kde_md_w_size.RData"
+)
+```
+
+```{r}
+load("kde_md_w_size.RData")
+
+df <- tibble(`x`=as.vector(x),
+             `y`=as.vector(y),
+             `Size`=rep(pvec,each=nsim))
+
+df$Size <- as.character(df$Size)
+df$Size <- factor(df$Size, levels=unique(df$Size))
+
+# make plot
+p <- ggplot(df, aes(x=x, y=y)) + theme_classic() +
+  # population value
+  geom_vline(xintercept = pop.md.w, colour="red", size=1) +
+  geom_line(aes(colour = Size), size = 1) + 
+  geom_abline(intercept=0, slope=0, colour="black") +
+  scale_color_viridis(discrete = TRUE) +
+  scale_x_continuous(breaks = seq(500, 1000, 50)) + 
+  # coord_cartesian(xlim=c(500, 1000)) +
+  theme(plot.title = element_text(size=22),
+        axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 14, colour="black"),
+        axis.text.y = element_text(size = 16, colour="black"),
+        axis.title.y = element_text(size = 18),
+        legend.key.width = unit(1.5,"cm"),
+        legend.position = c(0.85,0.65),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=18)) +
+  labs(x = "Reaction times", y = "Density") +
+  guides(colour = guide_legend(override.aes = list(size=3))) + # make thicker legend lines
+  ggtitle("Word median RT") 
+p
+# save figure
+ggsave(filename = 'figure_md_w_size.jpg',width=10,height=6) #path=pathname
+```
+
+### Highest density intervals
+Compute 50% highest density interval (HDI) for each sample size distribution. To see HDI in action, see John Kruschke's blog, for instance this [post](http://doingbayesiandataanalysis.blogspot.co.uk/2013/07/decisions-from-posterior-distributions.html).
+
+```{r}
+hdi.res <- matrix(0, nrow=length(pvec), ncol=2)
+for(P in 1:length(pvec)){
+hdi.res[P,] <- HDIofMCMC(sim.md.w[,P], credMass=0.50)  
+}
+```
+Illustrate results
+```{r}
+df <- tibble(x = as.vector(hdi.res),
+             y = rep(pvec,2),
+             label = as.character(as.vector(hdi.res)))
+df.seg <- tibble(x = hdi.res[,1],
+                 y = pvec,
+                 xend = hdi.res[,2],
+                 yend = pvec)
+df.label1 <- tibble(x = hdi.res[,1],
+             y = pvec,
+             label = as.character(hdi.res[,1]))
+df.label2 <- tibble(x = hdi.res[,2],
+             y = pvec,
+             label = as.character(hdi.res[,2]))
+
+ggplot(df, aes(x=x, y=y)) + theme_classic() + 
+  geom_point(size=3, aes(colour=y)) +
+  geom_segment(data=df.seg, aes(x=x, xend=xend, y=y, yend=yend, colour=y)) +
+  scale_color_viridis(discrete = FALSE) +
+  scale_y_continuous(breaks = pvec) +
+  geom_label(data=df.label1, aes(label=label), hjust = "outward", nudge_x = -1) +
+  geom_label(data=df.label2, aes(label=label), hjust = "outward", nudge_x = 1) +
+  geom_vline(xintercept = pop.md.w, colour="red", size=1) +
+  scale_x_continuous(breaks = seq(600, 800, 10)) + 
+  coord_cartesian(xlim=c(630, 710)) +
+  theme(plot.title = element_text(size=22),
+        axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 14, colour="black"),
+        axis.text.y = element_text(size = 16, colour="black"),
+        axis.title.y = element_text(size = 18),
+        legend.key.width = unit(1.5,"cm"),
+        legend.position = "none",
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=18)) +
+  labs(x = "Reaction times", y = "Sample sizes") +
+  ggtitle("Word median RT HDI") 
+# save figure
+ggsave(filename = 'figure_md_w_size_hdi.jpg',width=10,height=6) #path=pathname
+```
+
+
+## Non-word: median
+
+Make KDE:
+```{r eval=FALSE}
+x <- sim.md.nw
+y <- sim.md.nw
+for(iter.n in 1:length(pvec)){
+  x[,iter.n] <- sort(x[,iter.n])  
+  y[,iter.n] <- akerd(x[,iter.n], pyhat = TRUE, plotit = FALSE)
+}
+save(
+  x,
+  y,
+  file = "kde_md_nw_size.RData"
+)
+```
+
+```{r}
+load("kde_md_nw_size.RData")
+
+df <- tibble(`x`=as.vector(x),
+             `y`=as.vector(y),
+             `Size`=rep(pvec,each=nsim))
+
+df$Size <- as.character(df$Size)
+df$Size <- factor(df$Size, levels=unique(df$Size))
+
+# make plot
+p <- ggplot(df, aes(x=x, y=y)) + theme_classic() +
+  # population value
+  geom_vline(xintercept = pop.md.nw, colour="red", size=1) +
+  geom_line(aes(colour = Size), size = 1) + 
+  geom_abline(intercept=0, slope=0, colour="black") +
+  scale_color_viridis(discrete = TRUE) +
+  scale_x_continuous(breaks = seq(500, 1000, 50)) + 
+  # coord_cartesian(xlim=c(500, 1000)) +
+  theme(plot.title = element_text(size=22),
+        axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 14, colour="black"),
+        axis.text.y = element_text(size = 16, colour="black"),
+        axis.title.y = element_text(size = 18),
+        legend.key.width = unit(1.5,"cm"),
+        legend.position = c(0.85,0.65),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=18)) +
+  labs(x = "Reaction times", y = "Density") +
+  guides(colour = guide_legend(override.aes = list(size=3))) + # make thicker legend lines
+  ggtitle("Non-word median RT") 
+p
+# save figure
+ggsave(filename = 'figure_md_nw_size.jpg',width=10,height=6) #path=pathname
+```
+
+## Difference: median
+
+Make KDE:
+```{r eval=FALSE}
+x <- sim.md.diff
+y <- sim.md.diff
+for(iter.n in 1:length(pvec)){
+  x[,iter.n] <- sort(x[,iter.n])  
+  y[,iter.n] <- akerd(x[,iter.n], pyhat = TRUE, plotit = FALSE)
+}
+save(
+  x,
+  y,
+  file = "kde_md_diff_size.RData"
+)
+```
+
+```{r}
+load("kde_md_diff_size.RData")
+
+df <- tibble(`x`=as.vector(x),
+             `y`=as.vector(y),
+             `Size`=rep(pvec,each=nsim))
+
+df$Size <- as.character(df$Size)
+df$Size <- factor(df$Size, levels=unique(df$Size))
+
+# make plot
+p <- ggplot(df, aes(x=x, y=y)) + theme_classic() +
+  # population value
+  geom_vline(xintercept = pop.md.diff, colour="red", size=1) +
+  geom_line(aes(colour = Size), size = 1) + 
+  geom_abline(intercept=0, slope=0, colour="black") +
+  scale_color_viridis(discrete = TRUE) +
+  # scale_x_continuous(breaks = seq(600, 900, 50)) + 
+  theme(plot.title = element_text(size=22),
+        axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 14, colour="black"),
+        axis.text.y = element_text(size = 16, colour="black"),
+        axis.title.y = element_text(size = 18),
+        legend.key.width = unit(1.5,"cm"),
+        legend.position = c(0.85,0.65),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=18)) +
+  labs(x = "Reaction times", y = "Density") +
+  guides(colour = guide_legend(override.aes = list(size=3))) + # make thicker legend lines
+  ggtitle("Difference median RT") 
+p
+# save figure
+ggsave(filename = 'figure_md_diff_size.jpg',width=10,height=6) #path=pathname
+```
+
+### Probability of being wrong
+```{r}
+diffvec <- seq(5,50,5) # absolute differences to the population value
+pw <- matrix(0, ncol = length(diffvec), nrow = length(pvec))
+for(D in 1:length(diffvec)){
+  pw[D,] <- apply(abs(sim.md.diff - pop.md.diff) >= diffvec[D], 2, mean) 
+}
+pw
+```
+
+```{r}
+
+df <- tibble(x = rep(pvec, each = length(diffvec)),
+             y = as.vector(pw),
+             difference = rep(diffvec, length(pvec)))
+
+df$difference <- as.character(df$difference)
+df$difference <- factor(df$difference, levels=unique(df$difference))
+
+p <- ggplot(df, aes(x=x, y=y)) +
+  geom_line(aes(colour=difference), size = 1) +
+  scale_color_viridis(discrete = TRUE) +
+  scale_x_continuous(breaks = pvec) +
+  scale_y_continuous(breaks = seq(0,1,0.1)) +
+  theme(plot.title = element_text(size=22),
+        axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 14, colour="black"),
+        axis.text.y = element_text(size = 16, colour="black"),
+        axis.title.y = element_text(size = 18),
+        legend.key.width = unit(1.5,"cm"),
+        legend.position = "right",#c(0.85,0.65),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=18)) +
+  labs(x = "Sample size", y = "Probability of being wrong", colour="Difference >") +
+  guides(colour = guide_legend(override.aes = list(size=3))) + # make thicker legend lines
+  ggtitle("Difference median RT") 
+p
+# save figure
+ggsave(filename = 'figure_md_diff_size_prob.jpg',width=10,height=6) #path=pathname
+```
+
+### Highest density intervals
+```{r}
+hdi.res <- matrix(0, nrow=length(pvec), ncol=2)
+for(P in 1:length(pvec)){
+hdi.res[P,] <- HDIofMCMC(sim.md.diff[,P], credMass=0.50)  
+}
+```
+
+Illustrate results
+```{r}
+df <- tibble(x = as.vector(hdi.res),
+             y = rep(pvec,2),
+             label = as.character(as.vector(hdi.res)))
+df.seg <- tibble(x = hdi.res[,1],
+                 y = pvec,
+                 xend = hdi.res[,2],
+                 yend = pvec)
+df.label1 <- tibble(x = hdi.res[,1],
+             y = pvec,
+             label = as.character(hdi.res[,1]))
+df.label2 <- tibble(x = hdi.res[,2],
+             y = pvec,
+             label = as.character(hdi.res[,2]))
+
+ggplot(df, aes(x=x, y=y)) + theme_classic() + 
+  geom_point(size=3, aes(colour=y)) +
+  geom_segment(data=df.seg, aes(x=x, xend=xend, y=y, yend=yend, colour=y)) +
+  scale_color_viridis(discrete = FALSE) +
+  scale_y_continuous(breaks = pvec) +
+  geom_label(data=df.label1, aes(label=label), hjust = "outward", nudge_x = -1) +
+  geom_label(data=df.label2, aes(label=label), hjust = "outward", nudge_x = 1) +
+  geom_vline(xintercept = pop.md.diff, colour="red", size=1) +
+  scale_x_continuous(breaks = seq(50, 100, 5)) +
+  coord_cartesian(xlim=c(50, 100)) +
+  theme(plot.title = element_text(size=22),
+        axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 14, colour="black"),
+        axis.text.y = element_text(size = 16, colour="black"),
+        axis.title.y = element_text(size = 18),
+        legend.key.width = unit(1.5,"cm"),
+        legend.position = "none",
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=18)) +
+  labs(x = "Median reaction times", y = "Sample sizes") +
+  ggtitle("Difference median RT HDI") 
+# save figure
+ggsave(filename = 'figure_md_diff_size_hdi.jpg',width=10,height=6) #path=pathname
+```
+
+-------------
+## Word: mean
+Make KDE:
+```{r eval=FALSE}
+x <- sim.m.w
+y <- sim.m.w
+for(iter.n in 1:length(pvec)){
+  x[,iter.n] <- sort(x[,iter.n])  
+  y[,iter.n] <- akerd(x[,iter.n], pyhat = TRUE, plotit = FALSE)
+}
+save(
+  x,
+  y,
+  file = "kde_m_w_size.RData"
+)
+```
+
+```{r}
+load("kde_m_w_size.RData")
+
+df <- tibble(`x`=as.vector(x),
+             `y`=as.vector(y),
+             `Size`=rep(pvec,each=nsim))
+
+df$Size <- as.character(df$Size)
+df$Size <- factor(df$Size, levels=unique(df$Size))
+
+# make plot
+p <- ggplot(df, aes(x=x, y=y)) + theme_classic() +
+  # population value
+  geom_vline(xintercept = pop.m.w, colour="red", size=1) +
+  geom_line(aes(colour = Size), size = 1) + 
+  geom_abline(intercept=0, slope=0, colour="black") +
+  scale_color_viridis(discrete = TRUE) +
+  scale_x_continuous(breaks = seq(500, 1000, 50)) + 
+  # coord_cartesian(xlim=c(500, 1000)) +
+  theme(plot.title = element_text(size=22),
+        axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 14, colour="black"),
+        axis.text.y = element_text(size = 16, colour="black"),
+        axis.title.y = element_text(size = 18),
+        legend.key.width = unit(1.5,"cm"),
+        legend.position = c(0.85,0.65),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=18)) +
+  labs(x = "Reaction times", y = "Density") +
+  guides(colour = guide_legend(override.aes = list(size=3))) + # make thicker legend lines
+  ggtitle("Word mean RT") 
+p
+# save figure
+ggsave(filename = 'figure_m_w_size.jpg',width=10,height=6) #path=pathname
+```
+
+## Non-word: mean
+Make KDE:
+```{r eval=FALSE}
+x <- sim.m.nw
+y <- sim.m.nw
+for(iter.n in 1:length(pvec)){
+  x[,iter.n] <- sort(x[,iter.n])  
+  y[,iter.n] <- akerd(x[,iter.n], pyhat = TRUE, plotit = FALSE)
+}
+save(
+  x,
+  y,
+  file = "kde_m_nw_size.RData"
+)
+```
+
+```{r}
+load("kde_m_nw_size.RData")
+
+df <- tibble(`x`=as.vector(x),
+             `y`=as.vector(y),
+             `Size`=rep(pvec,each=nsim))
+
+df$Size <- as.character(df$Size)
+df$Size <- factor(df$Size, levels=unique(df$Size))
+
+# make plot
+p <- ggplot(df, aes(x=x, y=y)) + theme_classic() +
+  # population value
+  geom_vline(xintercept = pop.m.nw, colour="red", size=1) +
+  geom_line(aes(colour = Size), size = 1) + 
+  geom_abline(intercept=0, slope=0, colour="black") +
+  scale_color_viridis(discrete = TRUE) +
+  scale_x_continuous(breaks = seq(500, 1000, 50)) + 
+  # coord_cartesian(xlim=c(500, 1000)) +
+  theme(plot.title = element_text(size=22),
+        axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 14, colour="black"),
+        axis.text.y = element_text(size = 16, colour="black"),
+        axis.title.y = element_text(size = 18),
+        legend.key.width = unit(1.5,"cm"),
+        legend.position = c(0.85,0.65),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=18)) +
+  labs(x = "Reaction times", y = "Density") +
+  guides(colour = guide_legend(override.aes = list(size=3))) + # make thicker legend lines
+  ggtitle("Non-word mean RT") 
+p
+# save figure
+ggsave(filename = 'figure_m_nw_size.jpg',width=10,height=6) #path=pathname
+```
+
+## Difference: mean
+Make KDE:
+```{r eval=FALSE}
+x <- sim.m.diff
+y <- sim.m.diff
+for(iter.n in 1:length(pvec)){
+  x[,iter.n] <- sort(x[,iter.n])  
+  y[,iter.n] <- akerd(x[,iter.n], pyhat = TRUE, plotit = FALSE)
+}
+save(
+  x,
+  y,
+  file = "kde_m_diff_size.RData"
+)
+```
+
+```{r}
+load("kde_m_diff_size.RData")
+
+df <- tibble(`x`=as.vector(x),
+             `y`=as.vector(y),
+             `Size`=rep(pvec,each=nsim))
+
+df$Size <- as.character(df$Size)
+df$Size <- factor(df$Size, levels=unique(df$Size))
+
+# make plot
+p <- ggplot(df, aes(x=x, y=y)) + theme_classic() +
+  # population value
+  geom_vline(xintercept = pop.m.diff, colour="red", size=1) +
+  geom_line(aes(colour = Size), size = 1) + 
+  geom_abline(intercept=0, slope=0, colour="black") +
+  scale_color_viridis(discrete = TRUE) +
+  # scale_x_continuous(breaks = seq(600, 900, 50)) + 
+  theme(plot.title = element_text(size=22),
+        axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 14, colour="black"),
+        axis.text.y = element_text(size = 16, colour="black"),
+        axis.title.y = element_text(size = 18),
+        legend.key.width = unit(1.5,"cm"),
+        legend.position = c(0.85,0.65),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=18)) +
+  labs(x = "Reaction times", y = "Density") +
+  guides(colour = guide_legend(override.aes = list(size=3))) + # make thicker legend lines
+  ggtitle("Difference mean RT") 
+p
+# save figure
+ggsave(filename = 'figure_m_diff_size.jpg',width=10,height=6) #path=pathname
+```
+
+### Highest density intervals
+```{r}
+hdi.res <- matrix(0, nrow=length(pvec), ncol=2)
+for(P in 1:length(pvec)){
+hdi.res[P,] <- HDIofMCMC(sim.m.diff[,P], credMass=0.50)  
+}
+hdi.res <- round(hdi.res, digits = 1)
+```
+
+Illustrate results
+```{r}
+df <- tibble(x = as.vector(hdi.res),
+             y = rep(pvec,2),
+             label = as.character(as.vector(hdi.res)))
+df.seg <- tibble(x = hdi.res[,1],
+                 y = pvec,
+                 xend = hdi.res[,2],
+                 yend = pvec)
+df.label1 <- tibble(x = hdi.res[,1],
+             y = pvec,
+             label = as.character(hdi.res[,1]))
+df.label2 <- tibble(x = hdi.res[,2],
+             y = pvec,
+             label = as.character(hdi.res[,2]))
+
+ggplot(df, aes(x=x, y=y)) + theme_classic() + 
+  geom_point(size=3, aes(colour=y)) +
+  geom_segment(data=df.seg, aes(x=x, xend=xend, y=y, yend=yend, colour=y)) +
+  scale_color_viridis(discrete = FALSE) +
+  scale_y_continuous(breaks = pvec) +
+  geom_label(data=df.label1, aes(label=label), hjust = "outward", nudge_x = -1) +
+  geom_label(data=df.label2, aes(label=label), hjust = "outward", nudge_x = 1) +
+  geom_vline(xintercept = pop.m.diff, colour="red", size=1) +
+  scale_x_continuous(breaks = seq(50, 110, 5)) +
+  coord_cartesian(xlim=c(60, 110)) +
+  theme(plot.title = element_text(size=22),
+        axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 14, colour="black"),
+        axis.text.y = element_text(size = 16, colour="black"),
+        axis.title.y = element_text(size = 18),
+        legend.key.width = unit(1.5,"cm"),
+        legend.position = "none",
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=18)) +
+  labs(x = "Mean reaction times", y = "Sample sizes") +
+  ggtitle("Difference mean RT HDI") 
+# save figure
+ggsave(filename = 'figure_m_diff_size_hdi.jpg',width=10,height=6) #path=pathname
+```
+
+# 10,000 experiments: random samples of trials and participants
+```{r eval=FALSE}
+set.seed(21)
+
+p.list <- unique(flp$participant)
+nmax <- length(p.list)
+nsim <- 10000
+nP <- 20 # number of participants
+nT <- 100 # number of trials per participant
+
+sim.m.w <- double(length = nsim)
+sim.m.nw <- double(length = nsim)
+sim.m.diff <- double(length = nsim)
+sim.md.w <- double(length = nsim)
+sim.md.nw <- double(length = nsim)
+sim.md.diff <- double(length = nsim)
+
+for(iter in 1:nsim){
+  if(iter %% 1000 == 0){
+    print(paste("Simulation ",iter," / ",nsim,"..."))
+  }
+  # sample trials with replacement and compute mean and median
+  m.res <- tapply(flp$rt, 
+                 list(flp$participant, flp$condition), 
+                 function(s) mean(sample(s, nT, replace=TRUE)) )
+  md.res <- tapply(flp$rt, 
+                 list(flp$participant, flp$condition), 
+                 function(s) median(sample(s, nT, replace=TRUE)) )
+
+  # sample participants with replacement and compute group mean and median
+  mc.samp <- sample(nmax, nP, replace=TRUE)
+  # group mean
+  sim.m.w[iter] <- mean(m.res[mc.samp,1]) # word
+  sim.m.nw[iter] <- mean(m.res[mc.samp,2]) # non-word
+  sim.m.diff[iter] <- mean(m.res[mc.samp,2] - m.res[mc.samp,1]) # difference
+  # group median
+  sim.md.w[iter] <- median(md.res[mc.samp,1]) # word
+  sim.md.nw[iter] <- median(md.res[mc.samp,2]) # non-word
+  sim.md.diff[iter] <- median(md.res[mc.samp,2] - md.res[mc.samp,1]) # difference
+}
+save(
+  nmax,
+  nsim,
+  nP,
+  nT,
+  sim.m.w,
+  sim.m.nw,
+  sim.m.diff,
+  sim.md.w,
+  sim.md.nw,
+  sim.md.diff,
+  file = "./sim_res.RData"  
+)
+```
+
+## Illustrate results
+Compute kernel density estimates.
+```{r}
+load("./sim_res.RData")
+# make KDE
+sim.m.w <- sort(sim.m.w)
+sim.m.nw <- sort(sim.m.nw)
+sim.m.diff <- sort(sim.m.diff)
+sim.md.w <- sort(sim.md.w)
+sim.md.nw <- sort(sim.md.nw)
+sim.md.diff <- sort(sim.md.diff)
+
+a.m.w <- akerd(sim.m.w, pyhat = TRUE, plotit = FALSE)
+a.m.nw <- akerd(sim.m.nw, pyhat = TRUE, plotit = FALSE)
+a.m.diff <- akerd(sim.m.diff, pyhat = TRUE, plotit = FALSE)
+a.md.w <- akerd(sim.md.w, pyhat = TRUE, plotit = FALSE)
+a.md.nw <- akerd(sim.md.nw, pyhat = TRUE, plotit = FALSE)
+a.md.diff <- akerd(sim.md.diff, pyhat = TRUE, plotit = FALSE)
+```
+
+### Word condition
+```{r}
+# create data frame
+df <- tibble(`x`=c(sim.m.w, sim.md.w),
+             `y`=c(a.m.w, a.md.w),
+             `Condition`= rep(c("Mean", "Median"), each = length(sim.m.w)))
+
+# make factor with preserved name order
+df$Condition <- as.character(df$Condition)
+df$Condition <- factor(df$Condition, levels=unique(df$Condition))
+
+df.pop <- tibble(`x` = c(pop.m.w, pop.md.w),
+                 `Condition`= factor(c("Mean", "Median")))
+
+# make plot
+p <- ggplot(df, aes(x,y)) + theme_classic() + 
+  # add population values
+  geom_vline(data = df.pop, aes(xintercept = x, colour = Condition)) +
+  geom_line(aes(colour=Condition), size = 1.5) + # linetype=Condition, 
+  scale_color_manual(values=c("grey30", "#E69F00")) +
+  scale_x_continuous(limits=c(550,1050), breaks=seq(500,1000,100)) +
+  theme(plot.title = element_text(size=22),
+        axis.title.x = element_text(size = 18),
+        axis.text = element_text(size = 16, colour = "black"),
+        axis.title.y = element_text(size = 18),
+        legend.key.width = unit(1.5,"cm"),
+        legend.position = c(0.85,0.8),
+        legend.title = element_text(size=16),
+        legend.text = element_text(size = 14),
+        strip.text.y = element_text(size = 18, face = "bold", angle = 0)) +
+        # legend.position = c(0.25,0.9)) +
+  labs(x = "Reaction times", y = "Density") +
+  ggtitle("Word condition") 
+p
+# save figure
+ggsave(filename='./figure_sim_word.jpg',width=8,height=5) #path=pathname
+```
+
+### Non-word condition
+```{r}
+# create data frame
+df <- tibble(`x`=c(sim.m.nw, sim.md.nw),
+             `y`=c(a.m.nw, a.md.nw),
+             `Condition`= rep(c("Mean", "Median"), each = length(sim.m.w)))
+
+# make factor with preserved name order
+df$Condition <- as.character(df$Condition)
+df$Condition <- factor(df$Condition, levels=unique(df$Condition))
+
+df.pop <- tibble(`x` = c(pop.m.nw, pop.md.nw),
+                 `Condition`= factor(c("Mean", "Median")))
+
+# make plot
+p <- ggplot(df, aes(x,y)) + theme_classic() + 
+  # add population values
+  geom_vline(data = df.pop, aes(xintercept = x, colour = Condition)) +
+  geom_line(aes(colour=Condition), size = 1.5) + # linetype=Condition, 
+  scale_color_manual(values=c("grey30", "#E69F00")) +
+  scale_x_continuous(limits=c(550,1050), breaks=seq(500,1000,100)) +
+  theme(plot.title = element_text(size=22),
+        axis.title.x = element_text(size = 18),
+        axis.text = element_text(size = 16, colour = "black"),
+        axis.title.y = element_text(size = 18),
+        legend.key.width = unit(1.5,"cm"),
+        legend.position = c(0.85,0.8),
+        legend.title = element_text(size=16),
+        legend.text = element_text(size = 14),
+        strip.text.y = element_text(size = 18, face = "bold", angle = 0)) +
+        # legend.position = c(0.25,0.9)) +
+  labs(x = "Reaction times", y = "Density") +
+  ggtitle("Non-word condition") 
+p
+# save figure
+ggsave(filename='./figure_sim_nonword.jpg',width=8,height=5) #path=pathname
+```
+
+### Non-word - word difference
+```{r}
+# create data frame
+df <- tibble(`x`=c(sim.m.diff, sim.md.diff),
+             `y`=c(a.m.diff, a.md.diff),
+             `Condition`= rep(c("Mean", "Median"), each = length(sim.m.w)))
+
+# make factor with preserved name order
+df$Condition <- as.character(df$Condition)
+df$Condition <- factor(df$Condition, levels=unique(df$Condition))
+
+df.pop <- tibble(`x` = c(pop.m.nw-pop.m.w, pop.md.nw-pop.md.w),
+                 `Condition`= factor(c("Mean", "Median")))
+
+# make plot
+p <- ggplot(df, aes(x,y)) + theme_classic() + 
+  # add population values
+  geom_vline(data = df.pop, aes(xintercept = x, colour = Condition)) +
+  geom_line(aes(colour=Condition), size = 1.5) + # linetype=Condition, 
+  scale_color_manual(values=c("grey30", "#E69F00")) +
+  scale_x_continuous(limits=c(0,200), breaks=seq(0,200,50)) +
+  theme(plot.title = element_text(size=22),
+        axis.title.x = element_text(size = 18),
+        axis.text = element_text(size = 16, colour = "black"),
+        axis.title.y = element_text(size = 18),
+        legend.key.width = unit(1.5,"cm"),
+        legend.position = c(0.85,0.8),
+        legend.title = element_text(size=16),
+        legend.text = element_text(size = 14),
+        strip.text.y = element_text(size = 18, face = "bold", angle = 0)) +
+        # legend.position = c(0.25,0.9)) +
+  labs(x = "Reaction times", y = "Density") +
+  ggtitle("Difference") 
+p
+# save figure
+ggsave(filename='./figure_sim_difference.jpg',width=8,height=5) #path=pathname
+```
+
+## Probability of being wrong
+```{r}
+mean( (abs(sim.md.diff) - pop.md.diff) >= 5)
+mean( (abs(sim.md.diff) - pop.md.diff) >= 10)
+mean( (abs(sim.md.diff) - pop.md.diff) >= 20)
+```
+
+## Highest density intervals
+```{r}
+# Mean
+m.hdi <- round(HDIofMCMC(sim.m.diff, credMass=0.50), digits = 1)
+m.hdi
+# Median
+md.hdi <- round(HDIofMCMC(sim.md.diff, credMass=0.50), digits = 1)
+md.hdi
+```
+Interval lengths
+```{r}
+m.hdi[2] - m.hdi[1]
+md.hdi[2] - md.hdi[1]
+```
+
+Illustrate results
+```{r fig.width=5, fig.height=2}
+df <- tibble(x = c(m.hdi, md.hdi),
+             y = factor(c(rep("Mean",2), rep("Median",2))),
+             label = as.character(c(m.hdi, md.hdi)))
+df.pop <- tibble(x = c(pop.m.diff, pop.md.diff),
+                 y = c("Mean", "Median"))
+df.seg <- tibble(x = c(m.hdi[1], md.hdi[1]),
+                 y = c("Mean", "Median"),
+                 xend = c(m.hdi[2], md.hdi[2]),
+                 yend = c("Mean", "Median"))
+df.label1 <- tibble(x = c(m.hdi[1], md.hdi[1]),
+             y = c("Mean", "Median"),
+             label = as.character(c(m.hdi[1], md.hdi[1])))
+df.label2 <- tibble(x = c(m.hdi[2], md.hdi[2]),
+             y = c("Mean", "Median"),
+             label = as.character(c(m.hdi[2], md.hdi[2])))
+
+ggplot(df, aes(x=x, y=y)) + theme_classic() + 
+  geom_point(size=3, aes(colour=y)) +
+  geom_segment(data=df.seg, aes(x=x, xend=xend, y=y, yend=yend, colour=y)) +
+  geom_point(data=df.pop, shape=18, size = 5, aes(colour=y)) + 
+  # scale_color_viridis(discrete = TRUE) +
+  # scale_y_continuous(breaks = pvec) +
+  geom_label(data=df.label1, aes(label=label), hjust = "outward", nudge_x = -1) +
+  geom_label(data=df.label2, aes(label=label), hjust = "outward", nudge_x = 1) +
+  # geom_vline(xintercept = pop.m.diff, colour="red", size=1) +
+  scale_x_continuous(breaks = seq(50, 110, 5)) +
+  coord_cartesian(xlim=c(60, 110)) +
+  theme(plot.title = element_text(size=22),
+        axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 14, colour="black"),
+        axis.text.y = element_text(size = 16, colour="black"),
+        axis.title.y = element_text(size = 18),
+        legend.key.width = unit(1.5,"cm"),
+        legend.position = "none",
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=18)) +
+  labs(x = "Reaction times", y = "") +
+  ggtitle("Difference RT HDI") 
+# save figure
+ggsave(filename = 'figure_sim_difference_hdi.jpg',width=10,height=3) #path=pathname
+```
