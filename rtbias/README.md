@@ -5,9 +5,9 @@ In this series of 4 posts, I replicate, expand and discuss the results from
 > Miller, J. (1988) A warning about median reaction time. J Exp Psychol Hum Percept Perform, 14, 539-543.
 
 ## Part 1 = replicate Miller’s simulations + apply bootstrap bias correction
-<https://garstats.wordpress.com/2018/01/24/mdbias1/>
+[Blog post](https://garstats.wordpress.com/2018/02/02/rtbias1/)
 
-[R code for part 1](docs/miller1988.md)
+[R code](docs/miller1988.md)
 
 ## Part 2 = expand Miller’s simulations to group comparison
 
