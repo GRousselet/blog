@@ -1,6 +1,7 @@
 Replicate simulations from Miller 1988
 ================
 Guillaume A. Rousselet
+February 5, 2018
 
 -   [Define Miller's ex-Gaussian parameters](#define-millers-ex-gaussian-parameters)
 -   [Estimate population parameters from large samples](#estimate-population-parameters-from-large-samples)
@@ -16,6 +17,9 @@ Guillaume A. Rousselet
 -   [Bias/SE &lt; 0.25?](#biasse-0.25)
     -   [Compute bias/SE](#compute-biasse)
     -   [Illustrate P(bias/SE &gt; 0.25)](#illustrate-pbiasse-0.25)
+-   [Check bias correction](#check-bias-correction)
+    -   [Illustrate results: neg over wrong](#illustrate-results-neg-over-wrong)
+    -   [Illustrate results: pos under right](#illustrate-results-pos-under-right)
 
 ``` r
 # dependencies
@@ -511,3 +515,397 @@ p
 ```
 
 ![](miller1988_files/figure-markdown_github/unnamed-chunk-16-1.png) The proportion of experiments / simulations with bias/SE ratio larger than 0.25 is high overall, and decreases with sample size. So, following Efron & Tibshirani (1993)'s rule of thumb, median bias will tend to impact the accuracy of confidence intervals, especially with small sample sizes.
+
+Check bias correction
+=====================
+
+Here we investigate how well bias correction works as a function of sample size and skewness. The smaller the sample size, the less the bootstrap can estimate the sampling distribution and its bias. Ideally, after bias correction, we would expect the sample medians to be centred around zero, with limited variability. This ideal situation could look something like that, considering the most skewed distribution with the smallest sample size.
+
+``` r
+# load('./data/sim_miller1988.RData')
+P <- 1 # 1=most skewed distribution; 12=least
+N <- 1 # 1=smallest sample size; 10=largest
+
+set.seed(21)
+df <- tibble(`ORI`=sim.md[,P,N]-pop.md[P],
+             `BC`=runif(nsim, min=-50, max=50)*rnorm(nsim))
+
+# for(N in 1:length(nvec)){
+# make plot
+p <- ggplot(df, aes(x=ORI, y=BC)) + theme_classic() +
+  # geom_line(aes(colour = Skewness), size = 1) + 
+  geom_point(colour="grey50", alpha=0.3) +
+  geom_abline(intercept=0, slope=1, colour="black") +
+  geom_vline(xintercept = 0, colour="black") +
+  geom_hline(yintercept = 0, colour="black") +
+  geom_vline(xintercept = mean(df$ORI), colour="red") + # bias
+  geom_hline(yintercept = mean(df$BC), colour="green") + # bias after BBC
+  # scale_color_viridis(discrete = TRUE) +
+  scale_x_continuous(breaks=seq(-600,1000,200)) +
+  scale_y_continuous(breaks=seq(-600,1000,200)) +
+  coord_cartesian(xlim=c(-600,1000), ylim=c(-600,1000)) +
+  theme(plot.title = element_text(size=22),
+        axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 14, colour="black"),
+        axis.text.y = element_text(size = 16, colour="black"),
+        axis.title.y = element_text(size = 18),
+        legend.key.width = unit(1.5,"cm"),
+        legend.position = "blank",#c(0.85,0.65),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=18)) +
+  labs(x = "Median bias", y = "Ideal median bias after correction") +
+  guides(colour = guide_legend(override.aes = list(size=3))) # make thicker legend lines
+  # ggtitle("Bias correction: direction") 
+p
+```
+
+![](miller1988_files/figure-markdown_github/unnamed-chunk-17-1.png)
+
+``` r
+# p.bc.dir <- p
+# save figure
+ggsave(filename=paste0('figure_miller_bc_ideal_P',P,'_N',nvec[N],'.pdf'),width=10,height=7) 
+# }
+```
+
+The reality is very different.
+
+Figure without markup:
+
+``` r
+# load('./data/sim_miller1988.RData')
+P <- 1 # 1=most skewed distribution; 12=least
+N <- 1 # 1=smallest sample size; 10=largest
+
+# for(N in 1:length(nvec)){
+  # for(P in 1:nP){
+    
+    df <- tibble(`ORI`=sim.md[,P,N]-pop.md[P],
+                 `BC`=sim.md.bc[,P,N]-pop.md[P])
+    
+    # make plot
+    p <- ggplot(df, aes(x=ORI, y=BC)) + theme_classic() +
+      geom_point(colour="grey50", alpha=0.3) +
+      geom_abline(intercept=0, slope=1, colour="black") +
+      geom_vline(xintercept = 0, colour="black") +
+      geom_hline(yintercept = 0, colour="black") +
+      geom_vline(xintercept = mean(df$ORI), colour="red") + # bias
+      geom_hline(yintercept = mean(df$BC), colour="green") + # bias after BBC
+      scale_x_continuous(breaks=seq(-600,1000,200)) +
+      scale_y_continuous(breaks=seq(-600,1000,200)) +
+      coord_cartesian(xlim=c(-600,1000), ylim=c(-600,1000)) +
+      theme(plot.title = element_text(size=22),
+        axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 14, colour="black"),
+        axis.text.y = element_text(size = 16, colour="black"),
+        axis.title.y = element_text(size = 18),
+        legend.key.width = unit(1.5,"cm"),
+        legend.position = c(0.15,0.65),
+        legend.text=element_text(size=18),
+        legend.title=element_blank()) + #element_text(size=18)) +
+      labs(x = "Median bias", y = "Median bias after correction") +
+      guides(colour = guide_legend(override.aes = list(size=3))) # make thicker legend lines
+    # ggtitle("Bias correction: direction") 
+    p
+```
+
+![](miller1988_files/figure-markdown_github/unnamed-chunk-18-1.png)
+
+``` r
+    # p.bc.dir <- p
+    # save figure
+    ggsave(filename=paste0('figure_miller_bc_check_P',P,'_N',nvec[N],'.pdf'),width=10,height=7)
+  # }
+# }
+```
+
+Figure with markup:
+
+``` r
+# load('./data/sim_miller1988.RData')
+P <- 1 # 1=most skewed distribution; 12=least
+N <- 1 # 1=smallest sample size; 10=largest
+
+# define triangles
+df.triangle <- tibble(x=c(-600,0,0, 0,0,500, 0,800,800, 0,0,1000, -200,0,0, -300,0,-300), 
+                      y=c(-600,-600,0, -500,0,0, 0,0,800, 0,1000,1000, 0,0,200, 0,0,-300),
+                      g=factor(c(rep("neg: over wrong",3),
+                                 rep("pos: over right",3),
+                                 rep("pos: under right",3),
+                                 rep("pos: over wrong",3),
+                                 rep("neg: over right",3),
+                                 rep("neg: under right",3)))
+                      )
+
+# define colour palette
+cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#0072B2", "#D55E00")
+
+# for(N in 1:length(nvec)){
+  # for(P in 1:nP){
+    
+    df <- tibble(`ORI`=sim.md[,P,N]-pop.md[P],
+                 `BC`=sim.md.bc[,P,N]-pop.md[P])
+    
+    # make plot
+    # p <- ggplot(df, aes(x=ORI, y=BC)) + theme_classic() +
+      p <- ggplot(df.triangle, aes(x=x, y=y)) + theme_classic() +
+        geom_polygon(aes(group=g, fill=g), alpha=1) + 
+        scale_fill_manual(values=cbPalette) +
+      geom_point(data=df, aes(x=ORI, y=BC), colour="white", alpha=0.4) +
+      geom_abline(intercept=0, slope=1, colour="black") +
+      geom_vline(xintercept = 0, colour="black") +
+      geom_hline(yintercept = 0, colour="black") +
+      geom_vline(xintercept = mean(df$ORI), colour="red") + # bias
+      geom_hline(yintercept = mean(df$BC), colour="green") + # bias after BBC
+      scale_x_continuous(breaks=seq(-600,1000,200)) +
+      scale_y_continuous(breaks=seq(-600,1000,200)) +
+      coord_cartesian(xlim=c(-600,1000), ylim=c(-600,1000)) +
+      theme(plot.title = element_text(size=22),
+        axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 14, colour="black"),
+        axis.text.y = element_text(size = 16, colour="black"),
+        axis.title.y = element_text(size = 18),
+        legend.key.width = unit(1.5,"cm"),
+        legend.position = c(0.15,0.65),
+        legend.text=element_text(size=18),
+        legend.title=element_blank()) + #element_text(size=18)) +
+      labs(x = "Median bias", y = "Median bias after correction") +
+      guides(colour = guide_legend(override.aes = list(size=3))) # make thicker legend lines
+    # ggtitle("Bias correction: direction") 
+    p
+```
+
+![](miller1988_files/figure-markdown_github/unnamed-chunk-19-1.png)
+
+``` r
+    # p.bc.dir <- p
+    # save figure
+    ggsave(filename=paste0('figure_miller_bc_check_P',P,'_N',nvec[N],'_markup.pdf'),width=10,height=7)
+  # }
+# }
+```
+
+If the original bias is negative, after correction, the median tends to be even more negative, so over corrected in the wrong direction (lower left triangle).
+
+If the original bias is positive, after correction, the median is either:
+- over corrected in the right direction (lower right triangle)
+- under corrected in the right direction (middle right triangle)
+- over corrected in the wrong direction (upper right triangle)
+
+This pattern remains, although attenuated, if we consider the largest sample size:
+
+``` r
+# load('./data/sim_miller1988.RData')
+P <- 1 # 1=most skewed distribution; 12=least
+N <- 10 # 1=smallest sample size; 10=largest
+
+df <- tibble(`ORI`=sim.md[,P,N]-pop.md[P],
+             `BC`=sim.md.bc[,P,N]-pop.md[P])
+
+# for(N in 1:length(nvec)){
+# make plot
+p <- ggplot(df, aes(x=ORI, y=BC)) + theme_classic() +
+  # geom_line(aes(colour = Skewness), size = 1) + 
+  geom_point(colour="grey50", alpha=0.3) +
+  geom_abline(intercept=0, slope=1, colour="black") +
+  geom_vline(xintercept = 0, colour="black") +
+  geom_hline(yintercept = 0, colour="black") +
+  geom_vline(xintercept = mean(df$ORI), colour="red") + # bias
+  geom_hline(yintercept = mean(df$BC), colour="green") + # bias after BBC
+  # scale_color_viridis(discrete = TRUE) +
+  scale_x_continuous(breaks=seq(-200,200,50)) +
+  scale_y_continuous(breaks=seq(-200,200,50)) +
+  coord_cartesian(xlim=c(-200,200), ylim=c(-200,200)) +
+  theme(plot.title = element_text(size=22),
+        axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 14, colour="black"),
+        axis.text.y = element_text(size = 16, colour="black"),
+        axis.title.y = element_text(size = 18),
+        legend.key.width = unit(1.5,"cm"),
+        legend.position = "blank",#c(0.85,0.65),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=18)) +
+  labs(x = "Median bias", y = "Median bias after correction") +
+  guides(colour = guide_legend(override.aes = list(size=3))) # make thicker legend lines
+  # ggtitle("Bias correction: direction") 
+p
+```
+
+![](miller1988_files/figure-markdown_github/unnamed-chunk-20-1.png)
+
+``` r
+# p.bc.dir <- p
+# save figure
+ggsave(filename=paste0('figure_miller_bc_check_P',P,'_N',nvec[N],'.pdf'),width=10,height=7)
+# }
+```
+
+Or if we consider the least skewed distribution.
+
+``` r
+# load('./data/sim_miller1988.RData')
+P <- 12 # 1=most skewed distribution; 12=least
+N <- 1 # 1=smallest sample size; 10=largest
+
+df <- tibble(`ORI`=sim.md[,P,N]-pop.md[P],
+             `BC`=sim.md.bc[,P,N]-pop.md[P])
+
+# for(N in 1:length(nvec)){
+# make plot
+p <- ggplot(df, aes(x=ORI, y=BC)) + theme_classic() +
+  # geom_line(aes(colour = Skewness), size = 1) + 
+  geom_point(colour="grey50", alpha=0.3) +
+  geom_abline(intercept=0, slope=1, colour="black") +
+  geom_vline(xintercept = 0, colour="black") +
+  geom_hline(yintercept = 0, colour="black") +
+  geom_vline(xintercept = mean(df$ORI), colour="red") + # bias
+  geom_hline(yintercept = mean(df$BC), colour="green") + # bias after BBC
+  # scale_color_viridis(discrete = TRUE) +
+ scale_x_continuous(breaks=seq(-200,200,50)) +
+  scale_y_continuous(breaks=seq(-200,200,50)) +
+  coord_cartesian(xlim=c(-200,200), ylim=c(-200,200)) +
+  theme(plot.title = element_text(size=22),
+        axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 14, colour="black"),
+        axis.text.y = element_text(size = 16, colour="black"),
+        axis.title.y = element_text(size = 18),
+        legend.key.width = unit(1.5,"cm"),
+        legend.position = "blank",#c(0.85,0.65),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=18)) +
+  labs(x = "Median bias", y = "Median bias after correction") +
+  guides(colour = guide_legend(override.aes = list(size=3))) # make thicker legend lines
+  # ggtitle("Bias correction: direction") 
+p
+```
+
+![](miller1988_files/figure-markdown_github/unnamed-chunk-21-1.png)
+
+``` r
+# p.bc.dir <- p
+# save figure
+ggsave(filename=paste0('figure_miller_bc_check_P',P,'_N',nvec[N],'.pdf'),width=10,height=7)
+# }
+```
+
+We can look at the different patterns as a function of sample size and skewness.
+
+Illustrate results: neg over wrong
+----------------------------------
+
+``` r
+m <- matrix(rep(pop.md, length(nvec)), nrow=nP)
+POP <- aperm(replicate(nsim, m, simplify = "array"), c(3,1,2)) # 3D array
+BIAS <- sim.md - POP
+bc.res <- apply((sign(BIAS) == -1) * (sim.md.bc < sim.md ), c(2,3), sum) / 
+            apply((sign(BIAS) == -1), c(2,3), sum)
+
+df <- tibble(`Bias`=as.vector(bc.res),
+             `Size`=rep(nvec,each=nP),
+             `Skewness`=rep(round(pop.m - pop.md),length(nvec)))
+
+df$Skewness <- as.character(df$Skewness)
+df$Skewness <- factor(df$Skewness, levels=unique(df$Skewness))
+
+# compute expected proportion in ideal situation
+set.seed(21)
+BC=runif(nsim, min=-50, max=50)*rnorm(nsim)
+N <- 1 # smallest n
+P <- 1 # most skewed
+BIAS=sim.md[,P,N]-pop.md[P]
+REF= sum((sign(BIAS) == -1) * (BC < BIAS)) / 
+            sum(sign(BIAS) == -1)
+  
+# make plot
+p <- ggplot(df, aes(x=Size, y=Bias)) + theme_classic() +
+  geom_line(aes(colour = Skewness), size = 1) + 
+  geom_hline(yintercept=REF, colour="black") +
+  scale_color_viridis(discrete = TRUE) +
+  scale_x_continuous(breaks=nvec) + 
+  scale_y_continuous(breaks=seq(0,1,.1)) +
+  coord_cartesian(ylim=c(0.5,1)) +
+  theme(plot.title = element_text(size=22),
+        axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 14, colour="black"),
+        axis.text.y = element_text(size = 16, colour="black"),
+        axis.title.y = element_text(size = 18),
+        legend.key.width = unit(1.5,"cm"),
+        legend.position = c(0.55,0.85),
+        legend.direction = "horizontal",
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=18)) +
+  labs(x = "Sample size", y = "P(over + wrong | neg)") +
+  guides(colour = guide_legend(override.aes = list(size=3))) + # make thicker legend lines
+  ggtitle("Negative bias: P(over + wrong)") 
+p
+```
+
+![](miller1988_files/figure-markdown_github/unnamed-chunk-22-1.png)
+
+``` r
+# p.bc.dir <- p
+# save figure
+ggsave(filename=paste0('figure_miller_bc_check_neg_over_wrong.pdf'),width=10,height=6)
+```
+
+In the ideal situation illustrated previously, the expected proportion of over correction in the wrong direction, given an original negative bias, is 6.7%. So here, we clearly have an overrepresentation of these cases. When the original bias is negative, in most cases the bootstrap is unable to correct in the right direction. The situation gets worse with increasing skewness and smaller sample sizes.
+
+Illustrate results: pos under right
+-----------------------------------
+
+``` r
+m <- matrix(rep(pop.md, length(nvec)), nrow=nP)
+POP <- aperm(replicate(nsim, m, simplify = "array"), c(3,1,2)) # 3D array
+BIAS <- sim.md - POP
+bc.res <- apply((sign(BIAS) == 1) * (sim.md.bc < sim.md) * (sign(sim.md.bc) == 1), c(2,3), sum) / 
+            apply((sign(BIAS) == 1), c(2,3), sum)
+
+df <- tibble(`Bias`=as.vector(bc.res),
+             `Size`=rep(nvec,each=nP),
+             `Skewness`=rep(round(pop.m - pop.md),length(nvec)))
+
+df$Skewness <- as.character(df$Skewness)
+df$Skewness <- factor(df$Skewness, levels=unique(df$Skewness))
+
+# compute expected proportion in ideal situation
+set.seed(21)
+BC=runif(nsim, min=-50, max=50)*rnorm(nsim)
+N <- 1 # smallest n
+P <- 1 # most skewed
+BIAS=sim.md[,P,N]-pop.md[P]
+REF= sum((sign(BIAS) == 1) * (BC < BIAS) * (sign(BC)==1)) / 
+            sum(sign(BIAS) == 1)
+
+# make plot
+p <- ggplot(df, aes(x=Size, y=Bias)) + theme_classic() +
+  geom_line(aes(colour = Skewness), size = 1) + 
+  geom_hline(yintercept=REF, colour="black") +
+  scale_color_viridis(discrete = TRUE) +
+  scale_x_continuous(breaks=nvec) + 
+  scale_y_continuous(breaks=seq(0,1,.1)) +
+  coord_cartesian(ylim=c(0.3,0.8)) +
+  theme(plot.title = element_text(size=22),
+        axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 14, colour="black"),
+        axis.text.y = element_text(size = 16, colour="black"),
+        axis.title.y = element_text(size = 18),
+        legend.key.width = unit(1.5,"cm"),
+        legend.position = c(0.55,0.85),
+        legend.direction = "horizontal",
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=18)) +
+  labs(x = "Sample size", y = "P(under + right | pos)") +
+  guides(colour = guide_legend(override.aes = list(size=3))) + # make thicker legend lines
+  ggtitle("Positive bias: P(under + right)") 
+p
+```
+
+![](miller1988_files/figure-markdown_github/unnamed-chunk-23-1.png)
+
+``` r
+# p.bc.dir <- p
+# save figure
+ggsave(filename=paste0('figure_miller_bc_check_pos_under_right.pdf'),width=10,height=6)
+```
+
+In the ideal situation illustrated previously, the expected proportion of under correction in the right direction, given an original positive bias, is 44.7%. So here, we have an overrepresentation of these cases. When the original bias is positive, in too many cases the bootstrap corrects in the right direction, but it undercorrects. The situation gets worse with increasing skewness and smaller sample sizes.
