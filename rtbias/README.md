@@ -11,6 +11,10 @@ In this series of 4 posts, I replicate, expand and discuss the results from
 
 ## Part 2 = expand Miller’s simulations to group comparison
 
+[Blog post](https://garstats.wordpress.com/2018/02/08/rtbias2/)
+
+[R code](docs/bias_diff.md)
+
 ## Part 3 = problems with the mean
 
 ## Part 4 = application to a large dataset
