@@ -17,6 +17,10 @@ In this series of 4 posts, I replicate, expand and discuss the results from
 
 ## Part 3 = problems with the mean
 
+[Blog post](https://garstats.wordpress.com/2018/02/08/rtbias3/)
+
+[R code](docs/samp_dist.md)
+
 ## Part 4 = application to a large dataset
 
 ## Dependencies
