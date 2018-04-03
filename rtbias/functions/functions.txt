@@ -1,0 +1,90 @@
+med.effect.1gp<-function(x,null.value=0,loc.fun=median,varfun=pbvar){
+#
+#  Compute robust analog of Cohen's d using
+#  the median and the percentage bend midvariance
+#
+#  x is a vector
+#  null.value is a reference value.
+#  The numerator of the effect size is the difference between the median of x
+#  and null.value.
+#
+#  set loc.fun=hd to use the Harrell-Davis estimator
+#  instead of the usual sample median
+#
+#  Modified from med.effect from Rallfun-v34 by GAR 2017-12-29
+x <- elimna(x)
+nx <- length(x)
+ex <- loc.fun(x)
+sxsq <- varfun(x)
+dval <- (ex-null.value)/sqrt(sxsq)
+dval
+}
+
+biascef<-function(x,ef=D.akp.effect,nboot=500,...){
+#
+# Bias corrected measure of effect size.
+#
+x=elimna(x)
+n=length(x)
+efb=NA
+est=ef(x,...)
+for(b in 1:nboot){
+data=sample(n,n,replace=TRUE)
+efb[b]=ef(x[data],...)
+}
+b.est=mean(efb)
+bc.est=b.est-est
+bias.c=2*est-b.est
+list(Est.effect.size=est,Est.bias=bc.est,Bias.Corrected=bias.c)
+}
+
+es.bias<-function(x,locfun=mean,varfun=var,nboot=500,SEED=FALSE,...){
+#
+# Bias corrected measure of effect size.
+#
+if(SEED)set.seed(2)
+x=elimna(x)
+n=length(x)
+efb=NA
+est=locfun(x,...)/sqrt(varfun(x,...))
+for(b in 1:nboot){
+data=sample(n,n,replace=TRUE)
+efb[b]=locfun(x[data],...)/sqrt(varfun(x[data],...))
+}
+b.est=mean(efb)
+bc.est=b.est-est
+bias.c=2*est-b.est
+list(Est.effect.size=est,Est.bias=bc.est,Bias.Corrected=bias.c)
+}
+
+mct.bc<-function(x,locfun=mean,nboot=500,SEED=FALSE,...){
+#
+# Bias corrected measure of central tendency.
+#
+if(SEED)set.seed(2)
+x <- elimna(x)
+n <- length(x)
+data <- matrix(sample(x,n*nboot,replace=TRUE),nrow=nboot)
+bc.mct <- 2*locfun(x,...) - mean(apply(data, 1, locfun))
+bc.mct
+}
+
+D.akp.effect<-function(x,y=NULL,null.value=0,tr=.2){
+#
+# Computes the robust effect size for one-sample case using
+# a simple modification of
+# Algina, Keselman, Penfield Pcyh Methods, 2005, 317-328
+#
+#  When comparing two dependent groups, data for the second group can be stored in
+#  the second argument y. The function then computes the difference scores x-y
+#
+library(MASS)
+if(!is.null(y))x=x-y
+x<-elimna(x)
+s1sq=winvar(x,tr=tr)
+cterm=1
+if(tr>0)cterm=area(dnormvar,qnorm(tr),qnorm(1-tr))+2*(qnorm(tr)^2)*tr
+cterm=sqrt(cterm)
+dval<-cterm*(tmean(x,tr)-null.value)/sqrt(s1sq)
+dval
+}
