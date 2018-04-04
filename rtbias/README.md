@@ -23,6 +23,12 @@ In this series of 4 posts, I replicate, expand and discuss the results from
 
 ## Part 4 = application to a large dataset
 
+## Extra post on Cohen's *d*
+
+[Blog post]()
+
+[R code](docs/miller1988_cohend.md)
+
 ## Dependencies
 
 Packages:
