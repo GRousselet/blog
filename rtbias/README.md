@@ -25,7 +25,7 @@ In this series of 4 posts, I replicate, expand and discuss the results from
 
 ## Extra post on Cohen's *d*
 
-[Blog post]()
+[Blog post](https://garstats.wordpress.com/2018/04/04/dbias/)
 
 [R code](docs/miller1988_cohend.md)
 
