@@ -1,0 +1,482 @@
+---
+title: "Bayesian shift function"
+author: "Guillaume A. Rousselet"
+date: 2018-04-06
+output:
+  github_document:
+    html_preview: yes
+    toc: yes
+    toc_depth: 2
+  # pdf_document:
+  #   fig_caption: yes
+  #   number_sections: no
+  #   toc: yes
+---
+
+# Dependencies
+```{r}
+library(brms)
+library(tibble)
+library(HDInterval)
+library(bayesplot)
+library(BEST)
+library(bayesboot) 
+library(viridis)
+
+# install.packages("devtools")
+# devtools::install_github("GRousselet/rogme")
+library(rogme)
+```
+
+# Functions
+```{r}
+getmode <- function(x){
+  mcmcDensity = density(x)
+  res = mcmcDensity$x[which.max(mcmcDensity$y)]
+  res
+}
+
+hd.diff <- function(df, q=0.5){
+  res <- rogme::hd(df$g1, q=q) - rogme::hd(df$g2, q=q)
+  res
+}
+```
+
+# Make data
+```{r}
+set.seed(21)
+n <- 100
+gp1 <- rexgaussian(n, mu = 400, sigma = 100, beta = 200)
+gp2 <- rexgaussian(n, mu = 250, sigma = 100, beta = 350)
+
+df <- tibble(GP = factor(c(rep(1, length(gp1)),rep(2, length(gp2)))),
+             RT = c(gp1, gp2))
+summary(gp1)
+summary(gp2)
+round(quantile(gp1, probs = seq(.1,.9,.1)))
+round(quantile(gp2, probs = seq(.1,.9,.1)))
+```
+
+## Illustrate data
+```{r}
+p <- ggplot(df, aes(RT)) + theme_classic() +
+  geom_density(aes(colour = GP), size = 2) +
+  # geom_abline(intercept=0, slope=0, colour="black") +
+  scale_color_viridis(discrete = TRUE) +
+  coord_cartesian(xlim = c(0, 2500)) +
+  # scale_x_continuous(breaks=nvec) + 
+  # scale_y_continuous(limits=c(0,22), breaks=seq(0,22,5)) +
+  theme(plot.title = element_text(size=22),
+        axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 14, colour="black"),
+        axis.text.y = element_text(size = 16, colour="black"),
+        axis.title.y = element_text(size = 18),
+        legend.key.width = unit(1.5,"cm"),
+        legend.position = c(0.5,0.85),
+        legend.direction = "vertical",
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=18),
+        panel.background = element_rect(fill = 'grey', colour = 'black')) +
+  labs(x = "Reaction times in ms", y = "Density") +
+  # guides(colour = guide_legend(override.aes = list(size=3))) + # make thicker legend lines
+  ggtitle("Two exGaussian distributions") 
+p
+
+# save figure
+ggsave(filename='figure_data.pdf',width=7,height=5) #path=pathname
+```
+
+```{r}
+t.test(gp1, gp2)
+```
+
+## OLS fit
+```{r}
+olsmod <- lm(RT ~ GP, data = df)
+summary(olsmod)
+```
+
+## Shift function
+
+```{r}
+df <- rogme::mkt2(gp1, gp2)
+# compute shift function
+sf <- rogme::shifthd_pbci(data = df, formula = obs ~ gr, nboot = 200)[,4:8]
+
+# plot shift function
+psf <- plot_sf(sf, plot_theme = 2)
+
+# change axis labels
+psf <- psf +
+  labs(x = "Group 1 RT quantiles (ms)",
+       y = "Group 1 - group 2 \nquantile differences (ms)")
+
+# add labels for deciles 1 & 9
+psf <- add_sf_lab(psf, sf, y_lab_nudge = 100)
+psf
+
+# save figure
+ggsave(filename='figure_sf.pdf',width=7,height=5) #path=pathname
+```
+
+# Strategy 1: Bayesian bootstrap
+
+A great explanation of the Bayesian bootstrap is provided in these two blog posts by Rasmus Bååth:
+
+http://www.sumsar.net/blog/2015/04/the-non-parametric-bootstrap-as-a-bayesian-model/
+http://www.sumsar.net/blog/2015/07/easy-bayesian-bootstrap-in-r/
+
+There is also a movie!
+http://www.sumsar.net/blog/2016/07/bayesian-bootstrap-the-movie/
+
+```{r}
+df <- tibble(g1 = gp1, g2 = gp2)
+qseq <- seq(0.1, 0.9, 0.1)
+bbres <- tibble(Group1 = vector(mode = "numeric", length = 9),
+                Group2 = vector(mode = "numeric", length = 9),
+                difference = vector(mode = "numeric", length = 9),
+                ci_lower = vector(mode = "numeric", length = 9),
+                ci_upper = vector(mode = "numeric", length = 9))
+for(S in 1:9){
+  # Harrell-Davis quantile estimate for group 1
+  bbres$Group1[S] <- rogme::hd(gp1, q=qseq[S])
+  # Harrell-Davis quantile estimate for group 2
+  bbres$Group2[S] <- rogme::hd(gp2, q=qseq[S])
+  # difference
+  bbres$difference[S] <- bbres$Group1[S] - bbres$Group2[S]
+  
+res <- bayesboot::bayesboot(data = df, 
+                            statistic = hd.diff,
+                            R = 1000,
+                            R2 = 1000,
+                            use.weights = FALSE,
+                            q = qseq[S])
+tmp <- hdi(res)
+bbres$ci_lower[S] <- tmp[1]
+bbres$ci_upper[S] <- tmp[2]
+}
+```
+
+To check bayesboot posterior distributions:
+```{r}
+plot(res)
+summary(res)
+```
+
+## Plot results
+```{r}
+# plot shift function
+psf <- plot_sf(bbres, plot_theme = 2)
+
+# change axis labels
+psf <- psf +
+  labs(x = "Group 1 RT quantiles (ms)",
+       y = "Group 1 - group 2 \nquantile differences (ms)")
+
+# # add labels for deciles 1 & 9
+# psf <- add_sf_lab(psf, sf, y_lab_nudge = 100)
+psf
+
+# save figure
+ggsave(filename='figure_bbsf.pdf',width=7,height=5) #path=pathname
+```
+
+# Strategy 2: Bayesian quantile regression
+
+## Bayesian model using quantile regression
+
+```{r}
+df <- tibble(GP = factor(c(rep(1, length(gp1)),rep(2, length(gp2)))),
+             RT = c(gp1, gp2))
+
+fit.qr <- brm(bf(RT ~ GP, sigma ~ GP, quantile = 0.5),
+                  family = asym_laplace,
+                  data = df, cores=4)
+```
+
+```{r, eval=FALSE}
+get_prior(bf(IQ ~ Group, sigma ~ Group, quantile = 0.5),
+                  family = asym_laplace,
+                  data = df)
+```
+
+
+```{r}
+fit.qr
+```
+
+```{r, eval=FALSE}
+fit.qr.25 <- brm(bf(RT ~ GP, sigma ~ GP, quantile = 0.25),
+                  family = asym_laplace,
+                  data = df, cores=4)
+```
+
+```{r, eval=FALSE}
+fit.qr.25
+```
+
+## Check chains
+Get chains
+```{r}
+posterior <- as.array(fit.qr)
+dimnames(posterior)
+```
+
+```{r}
+mcmc_dens_overlay(posterior, pars = c("b_Intercept", "b_GP2", "b_sigma_Intercept", "b_sigma_GP2"))
+```
+
+```{r}
+# color_scheme_set("mix-blue-red")
+color_scheme_set("viridis")
+mcmc_trace(posterior, pars = c("b_Intercept", "b_GP2", "b_sigma_Intercept", "b_sigma_GP2"),
+           facet_args = list(ncol = 1, strip.position = "left"))
+```
+
+```{r, eval=FALSE}
+color_scheme_set("red")
+mcmc_intervals(posterior, pars = c("b_Intercept", "b_GP2"))
+```
+
+```{r, eval=FALSE}
+mcmc_intervals(posterior, pars = c("b_sigma_Intercept", "b_sigma_GP2"))
+```
+
+```{r, eval=FALSE}
+# using BEST package
+x0 <- as.data.frame(fit.qr, pars = "b_Intercept")[,1]
+x1 <- as.data.frame(fit.qr, pars = "b_GP2")[,1]
+BEST::plotPost(x0, showMode = TRUE)
+```
+
+```{r, eval=FALSE}
+BEST::plotPost(x0+x1, showMode = TRUE)
+```
+
+```{r, eval=FALSE}
+round(getmode(x0))
+round(hdi(x0))
+round(getmode(x0+x1))
+round(hdi(x0+x1))
+```
+
+## Posterior samples: posterior predictive checks
+Graphical posterior predictive checks
+https://cran.r-project.org/web/packages/bayesplot/vignettes/graphical-ppcs.html
+```{r}
+p <- brms::pp_check(fit.qr, type = "dens_overlay", nsamples = 100)
+p + theme_minimal() +
+  coord_cartesian(xlim = c(0, 2500))
+
+# brms::pp_check(fit.qr, type = "error_hist")
+# brms::pp_check(fit.qr, type = "scatter_avg")
+# brms::pp_check(fit.qr, type = "stat_2d")
+# # brms::pp_check(fit1, type = "rootogram")
+# brms::pp_check(fit.qr, type = "loo_pit")
+```
+
+## Full shift function using asym_laplace
+
+```{r, eval=FALSE}
+qseq <- seq(.1, .9, .1) # quantile sequence
+CM <- 0.95 # credible mass
+nQ <- length(qseq)
+bqrsf <- tibble(Group1 = vector(mode = "numeric", length = 9),
+                Group2 = vector(mode = "numeric", length = 9),
+                difference = vector(mode = "numeric", length = 9),
+                ci_lower = vector(mode = "numeric", length = 9),
+                ci_upper = vector(mode = "numeric", length = 9))
+
+for(Q in 1:nQ){
+  
+  fit <- brm(bf(RT ~ GP, sigma ~ GP, quantile = qseq[Q]),
+    family = asym_laplace,
+    data = df, cores=4)
+  # extract chains
+  x0 <- as.data.frame(fit, pars = "b_Intercept")[,1]
+  x1 <- as.data.frame(fit, pars = "b_GP2")[,1]
+  
+  # get median + HDI
+  bqrsf$Group1[Q] <- median(x0) # condition 1 - to get mode instead: getmode(x0)
+  bqrsf$Group2[Q] <- median(x0+x1) # condition 2
+  
+  # we could also get HDI for each group estimation
+  # hdi(x0, credMass = CM) 
+  # hdi(x0+x1, credMass = CM)
+  
+  bqrsf$difference[Q] <- median(-x1) # difference
+  tmp <- hdi(-x1, credMass = CM)
+  bqrsf$ci_lower[Q] <- tmp[1]
+  bqrsf$ci_upper[Q] <- tmp[2]
+}
+save(bqrsf, file = "bqrsf.RData")
+```
+
+## Plot results
+```{r}
+load("bqrsf.RData")
+# plot shift function
+psf <- plot_sf(bqrsf, plot_theme = 2)
+
+# change axis labels
+psf <- psf +
+  labs(x = "Group 1 RT quantiles (ms)",
+       y = "Group 1 - group 2 \nquantile differences (ms)")
+
+# # add labels for deciles 1 & 9
+# psf <- add_sf_lab(psf, sf, y_lab_nudge = 100)
+psf
+
+# save figure
+ggsave(filename='figure_bqrsf.pdf',width=7,height=5) #path=pathname
+```
+
+# Strategy 3: Bayesian model with exGaussians
+
+```{r, eval = FALSE}
+get_prior(RT ~ GP,
+          family = exgaussian,
+          data = df)
+```
+
+```{r, eval = FALSE}
+fit.exg <- brm(bf(RT ~ GP, 
+                  sigma ~ GP,
+                  beta ~ GP),
+                  family = exgaussian(link = "identity", 
+                                      link_sigma = "log", 
+                                      link_beta = "log"),
+                  data = df, 
+                  warmup = 1000, 
+                  iter = 2000, 
+                  chains = 4,
+                  control = list(adapt_delta = 0.999))
+save(fit.exg, file="fit.exg.RData")
+```
+
+```{r}
+load("fit.exg.RData")
+fit.exg
+```
+
+```{r}
+posterior <- as.array(fit.exg)
+mcmc_dens_overlay(posterior, pars = c("b_Intercept", "b_sigma_Intercept", "b_beta_Intercept",
+                                      "b_GP2", "b_sigma_GP2", "b_beta_GP2"))
+```
+
+```{r}
+x <- as.data.frame(fit.exg, pars = "b_Intercept")[,1]
+BEST::plotPost(x, showMode = TRUE)
+```
+
+```{r}
+x <- as.data.frame(fit.exg, pars = "b_Intercept")[,1]
+x1 <- as.data.frame(fit.exg, pars = "b_GP2")[,1]
+BEST::plotPost(x+x1, showMode = TRUE)
+```
+
+```{r}
+x <- as.data.frame(fit.exg, pars = "b_sigma_Intercept")[,1]
+BEST::plotPost(exp(x), showMode = TRUE)
+```
+
+```{r}
+x <- as.data.frame(fit.exg, pars = "b_beta_Intercept")[,1]
+BEST::plotPost(exp(x), showMode = TRUE)
+```
+
+## Get matrix yrep of draws from the posterior distributions
+```{r}
+# yrep <- posterior_predict(fit.exg, draws = 500) 
+yrep <- predict(fit.exg, nsamples = 500, summary = FALSE) 
+y <- df$RT
+```
+
+### Check predictions
+```{r}
+# color_scheme_set("brightblue")
+color_scheme_set("darkgray")
+ppc_dens_overlay(y[1:100], yrep[1:200, 1:100])
+```
+
+```{r}
+ppc_dens_overlay(y[101:200], yrep[1:200, 101:200])
+```
+
+## Medians per group
+```{r}
+ppc_stat_grouped(y, yrep, stat = "median", binwidth = 1, group = df$GP)
+```
+
+## Full shift function using posterior distributions from exGaussian fits
+
+Get matrix yrep of draws from the posterior predictive distribution
+```{r}
+yrep <- predict(fit.exg, nsamples = 2000, summary = FALSE) 
+# ppc_dens_overlay(y[1:100], yrep[1:200, 1:100])
+yrep0 <- yrep[,(1:n)]
+yrep1 <- yrep[,(n+1):(n*2)]
+qseq <- seq(.1, .9, .1) # quantile sequence
+CM <- 0.95 # credible mass
+nQ <- length(qseq)
+
+bexgsf <- tibble(Group1 = vector(mode = "numeric", length = 9),
+                Group2 = vector(mode = "numeric", length = 9),
+                difference = vector(mode = "numeric", length = 9),
+                ci_lower = vector(mode = "numeric", length = 9),
+                ci_upper = vector(mode = "numeric", length = 9))
+
+for(Q in 1:nQ){
+  # compute quantiles using R default formula
+  # x0 <- apply(yrep0, 1, quantile, probs = qseq[Q])
+  # x1 <- apply(yrep1, 1, quantile, probs = qseq[Q])
+  
+  # compute quantiles using Harrell-Davis estimator
+  x0 <- apply(yrep0, 1, rogme::hd, q = qseq[Q])
+  x1 <- apply(yrep1, 1, rogme::hd, q = qseq[Q])
+  
+  # get median + HDI
+  bexgsf$Group1[Q] <- median(x0) # condition 1 - to get mode instead: getmode(x0)
+  bexgsf$Group2[Q] <- median(x1) # condition 2
+  
+  # we could also get HDI for each group estimation
+  # hdi(x0, credMass = CM) 
+  # hdi(x0+x1, credMass = CM)
+  
+  bexgsf$difference[Q] <- bexgsf$Group1[Q] - bexgsf$Group2[Q] # difference
+  tmp <- hdi(x0-x1, credMass = CM)
+  bexgsf$ci_lower[Q] <- tmp[1]
+  bexgsf$ci_upper[Q] <- tmp[2]
+}
+
+save(bexgsf, file = "bexgsf.RData")
+```
+
+```{r, eval=FALSE}
+# Check quantile distributions
+BEST::plotPost(x0, showMode = TRUE)
+mean(x0)
+median(x0)
+
+BEST::plotPost(x1, showMode = TRUE)
+```
+
+## Plot results
+```{r}
+load("bqrsf.RData")
+# plot shift function
+psf <- plot_sf(bexgsf, plot_theme = 2)
+
+# change axis labels
+psf <- psf +
+  labs(x = "Group 1 RT quantiles (ms)",
+       y = "Group 1 - group 2 \nquantile differences (ms)")
+
+# # add labels for deciles 1 & 9
+# psf <- add_sf_lab(psf, sf, y_lab_nudge = 100)
+psf
+
+# save figure
+ggsave(filename='figure_bexgsf.pdf',width=7,height=5) #path=pathname
+```
