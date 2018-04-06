@@ -1,5 +1,4 @@
-R code and notebook for my blog post on the Bayesian shift function:
-<XXX>
+R code and notebook for my [blog post](https://garstats.wordpress.com/2018/04/06/bsf/) on the Bayesian shift function:
 
 The notebook is available [here](docs/bsf.md).
 
