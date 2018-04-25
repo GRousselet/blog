@@ -23,6 +23,14 @@ In this series of 4 posts, I replicate, expand and discuss the results from
 
 ## Part 4 = application to a large dataset
 
+[Blog post](https://garstats.wordpress.com/2018/04/25/rtbias4/)
+
+R code:
+
+- [Description of dataset](docs/flp_illustrate_dataset.md)
+
+- [Simulation](docs/flp_simulation.md)
+
 ## Extra post on Cohen's *d*
 
 [Blog post](https://garstats.wordpress.com/2018/04/04/dbias/)
@@ -39,8 +47,11 @@ Packages:
 `retimes`
 `viridis`
 `knitr`
+`HDInterval`
 
 `Rallfun-v34.txt` contains Rand Wilcox’s functions and is also available [here](http://dornsife.usc.edu/labs/rwilcox/software/).
+
+`akerd.txt` contains a subset of Rand Wilcox's functions to compute adaptive kernel density estimates.
 
 `HDIofMCMC.R` contains a function to compute highest density intervals.
 The code is from John K. Kruschke’s [`Doing bayesian data analysis book`](https://sites.google.com/site/doingbayesiandataanalysis/).
