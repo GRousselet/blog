@@ -156,7 +156,7 @@ p <- ggplot(df, aes(x=Condition1, y=Condition2)) +
         axis.title.y = element_text(size = 18),
         legend.position = "none") +
   labs(title="Paired observations") +
-  coord_fixed(xlim = c(0, 2500), ylim = c(0, 2500)) 
+  coord_fixed(xlim = c(0, 2500), ylim = c(0, 2500))
 p
 ```
 
@@ -197,7 +197,7 @@ psf
 
 ``` r
 # save figure
-ggsave(filename='figure_sf.png',width=7,height=5) #path=pathname
+ggsave(filename='figure_sf_dhd.png',width=7,height=5) #path=pathname
 ```
 
 New shift function
@@ -258,7 +258,7 @@ psf <- plot_sf(sf2, plot_theme = 2, symb_size = 3)
 # change axis labels
 psf <- psf +
   labs(x = "Condition 1 quantiles (ms)",
-       y = "Condition 1 - Condition 2 \nquantile differences (ms)")
+       y = "Quantiles of \npairwise differences (ms)")
 
 # add labels for deciles 1 & 9
 psf <- add_sf_lab(psf, round(sf2), y_lab_nudge = 100)
@@ -269,5 +269,5 @@ psf
 
 ``` r
 # save figure
-ggsave(filename='figure_sf_diff.png',width=7,height=5) #path=pathname
+ggsave(filename='figure_sf_pdhd.png',width=7,height=5) #path=pathname
 ```
