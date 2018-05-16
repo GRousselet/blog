@@ -1,23 +1,30 @@
-A new shift function for dependent groups
+A new shift function for dependent groups?
 ================
 Guillaume A. Rousselet
 2018-04-30
 
 -   [Dependencies](#dependencies)
--   [Make data](#make-data)
--   [Illustrate data](#illustrate-data)
-    -   [Kernel density estimates](#kernel-density-estimates)
-    -   [Scatterplot](#scatterplot)
--   [Existing shift function](#existing-shift-function)
--   [New shift function](#new-shift-function)
-    -   [New R code](#new-r-code)
-    -   [Plot new shift function](#plot-new-shift-function)
+-   [Example 1: dependent RT data](#example-1-dependent-rt-data)
+    -   [Make data](#make-data)
+    -   [Illustrate data](#illustrate-data)
+    -   [Existing shift function](#existing-shift-function)
+    -   [New shift function](#new-shift-function)
+-   [Example 2: uniform shift + normal noise](#example-2-uniform-shift-normal-noise)
+    -   [Make data](#make-data-1)
+    -   [Illustrate data](#illustrate-data-1)
+    -   [Shift function for paired marginals](#shift-function-for-paired-marginals)
+    -   [Shift function for pairwise differences](#shift-function-for-pairwise-differences)
 
 Dependencies
 ============
 
 ``` r
 library(tibble)
+```
+
+    ## Warning: package 'tibble' was built under R version 3.4.3
+
+``` r
 library(viridis)
 ```
 
@@ -26,6 +33,8 @@ library(viridis)
 ``` r
 library(brms)
 ```
+
+    ## Warning: package 'brms' was built under R version 3.4.3
 
     ## Loading required package: Rcpp
 
@@ -57,16 +66,17 @@ library(dplyr)
 library(rogme)
 ```
 
+Example 1: dependent RT data
+============================
+
 Make data
-=========
+---------
 
 ``` r
 set.seed(77)
 n <- 100
 gp1 <- sort(rexgaussian(n, mu = 380, sigma = 120, beta = 400))
 gp2 <- sort(rexgaussian(n, mu = 400, sigma = 100, beta = 200))
-# gp1 <- gp2 + rnorm(n)*10
-# gp1[gp1>800] <- gp1[gp1>800]*1.1
 
 df <- tibble(Condition = factor(c(rep(1, length(gp1)),rep(2, length(gp2)))),
              RT = c(gp1, gp2))
@@ -98,10 +108,9 @@ round(quantile(gp2, probs = seq(.1,.9,.1)))
     ## 358 405 465 506 548 576 633 731 826
 
 Illustrate data
-===============
+---------------
 
-Kernel density estimates
-------------------------
+### Kernel density estimates
 
 ``` r
 p <- ggplot(df, aes(RT)) + theme_classic() +
@@ -135,8 +144,7 @@ p
 ggsave(filename='figure_kde.png',width=7,height=5) 
 ```
 
-Scatterplot
------------
+### Scatterplot
 
 ``` r
 df <- tibble(Condition1 = gp1,
@@ -168,7 +176,7 @@ ggsave(filename='figure_scatter.png',width=7,height=5) #path=pathname
 ```
 
 Existing shift function
-=======================
+-----------------------
 
 ``` r
 df <- rogme::mkt2(gp1, gp2)
@@ -201,10 +209,9 @@ ggsave(filename='figure_sf_dhd.png',width=7,height=5) #path=pathname
 ```
 
 New shift function
-==================
+------------------
 
-New R code
-----------
+### New R code
 
 ``` r
 shiftpdhd_pbci <- function(x = x, y = y, q = seq(0.1, 0.9, 0.1), nboot = 1000, alpha = 0.05){
@@ -240,8 +247,7 @@ shiftpdhd_pbci <- function(x = x, y = y, q = seq(0.1, 0.9, 0.1), nboot = 1000, a
 }
 ```
 
-Plot new shift function
------------------------
+### Plot new shift function
 
 ``` r
 # compute shift function
@@ -270,4 +276,251 @@ psf
 ``` r
 # save figure
 ggsave(filename='figure_sf_pdhd.png',width=7,height=5) #path=pathname
+```
+
+Example 2: uniform shift + normal noise
+=======================================
+
+Make data
+---------
+
+``` r
+set.seed(666)
+n <- 300
+m <- 50
+sd <- 10
+gp1 <- rnorm(n, mean = m, sd = sd)
+# gp2 <- gp1 + rnorm(n, mean = 0, sd = 5)
+gp2 <- gp1 + rnorm(n, mean = 5, sd = 5)
+# sim.data <- rmul(n,p=2,cmat=diag(rep(1,p)),rho=0, mar.fun=ghdist,OP=TRUE,g=0,h=0) * sd + m
+# gp1 <- sim.data[,1]
+# gp2 <- sim.data[,2]
+
+df <- tibble(Condition = factor(c(rep(1, length(gp1)),rep(2, length(gp2)))),
+             RT = c(gp1, gp2))
+summary(gp1)
+```
+
+    ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+    ##   18.51   42.25   49.20   49.17   56.88   75.79
+
+``` r
+summary(gp2)
+```
+
+    ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+    ##   14.96   45.76   54.70   54.25   62.95   83.07
+
+``` r
+round(quantile(gp1, probs = seq(.1,.9,.1)))
+```
+
+    ## 10% 20% 30% 40% 50% 60% 70% 80% 90% 
+    ##  36  40  44  46  49  52  56  58  63
+
+``` r
+round(quantile(gp2, probs = seq(.1,.9,.1)))
+```
+
+    ## 10% 20% 30% 40% 50% 60% 70% 80% 90% 
+    ##  41  44  47  51  55  58  61  64  69
+
+Illustrate data
+---------------
+
+### Kernel density estimates
+
+``` r
+p <- ggplot(df, aes(RT)) + theme_classic() +
+  geom_density(aes(colour = Condition), size = 2) +
+  # geom_abline(intercept=0, slope=0, colour="black") +
+  scale_color_viridis(discrete = TRUE) +
+  # coord_cartesian(xlim = c(0, 2500)) +
+  # scale_x_continuous(breaks=nvec) + 
+  # scale_y_continuous(limits=c(0,22), breaks=seq(0,22,5)) +
+  theme(plot.title = element_text(size=22),
+        axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 14, colour="black"),
+        axis.text.y = element_text(size = 16, colour="black"),
+        axis.title.y = element_text(size = 18),
+        legend.key.width = unit(1.5,"cm"),
+        legend.position = c(0.85,0.85),
+        legend.direction = "vertical",
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=18),
+        panel.background = element_rect(fill = 'grey', colour = 'black')) +
+  labs(x = "Reaction times in ms", y = "Density") +
+  # guides(colour = guide_legend(override.aes = list(size=3))) + # make thicker legend lines
+  ggtitle("Two dependent distributions") 
+p
+```
+
+![](new_shiftdhd_files/figure-markdown_github/unnamed-chunk-9-1.png)
+
+``` r
+# save figure
+# ggsave(filename='./figures/figure_kde.png',width=7,height=5) 
+```
+
+### Pairwise differences
+
+``` r
+df <- tibble(Difference = gp1-gp2,
+             Participant = factor(seq(1,n)))
+
+p <- ggplot(df, aes(Difference)) + theme_classic() +
+  geom_density(size = 2) +
+  geom_vline(xintercept=0, colour="black") +
+  # coord_cartesian(xlim = c(0, 2500)) +
+  # scale_x_continuous(breaks=nvec) + 
+  # scale_y_continuous(limits=c(0,22), breaks=seq(0,22,5)) +
+  theme(plot.title = element_text(size=22),
+        axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 14, colour="black"),
+        axis.text.y = element_text(size = 16, colour="black"),
+        axis.title.y = element_text(size = 18),
+        legend.key.width = unit(1.5,"cm"),
+        legend.position = c(0.5,0.85),
+        legend.direction = "vertical",
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=18),
+        panel.background = element_rect(fill = 'grey', colour = 'black')) +
+  labs(x = "Reaction times in ms", y = "Density") +
+  # guides(colour = guide_legend(override.aes = list(size=3))) + # make thicker legend lines
+  ggtitle("Difference distribution") 
+p
+```
+
+![](new_shiftdhd_files/figure-markdown_github/unnamed-chunk-10-1.png)
+
+``` r
+# save figure
+# ggsave(filename='./figures/figure_kde.png',width=7,height=5) 
+```
+
+### Scatterplot
+
+``` r
+df <- tibble(Condition1 = gp1,
+             Condition2 = gp2,
+             Participant = factor(seq(1,n)))
+
+p <- ggplot(df, aes(x=Condition1, y=Condition2)) + 
+  geom_abline(intercept = 0) +
+  geom_point(size=4,stroke=1, aes(colour = Participant)) +
+  scale_color_viridis(discrete = TRUE) +
+  coord_cartesian(xlim = c(0, 100), ylim = c(0, 100)) +
+  theme_bw() +
+  theme(plot.title = element_text(size=22),
+        axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 14, colour="black"),
+        axis.text.y = element_text(size = 16, colour="black"),
+        axis.title.y = element_text(size = 18),
+        legend.position = "none") +
+  labs(title="Paired observations") #+
+  # coord_fixed(xlim = c(0, 2500), ylim = c(0, 2500))
+p
+```
+
+![](new_shiftdhd_files/figure-markdown_github/unnamed-chunk-11-1.png)
+
+``` r
+# save figure
+# ggsave(filename='./figures/figure_scatter.png',width=7,height=5) #path=pathname
+```
+
+### Scatterplot2
+
+``` r
+df <- tibble(Condition1 = gp1,
+             Difference = gp1-gp2,
+             Participant = factor(seq(1,n)))
+
+p <- ggplot(df, aes(x=Condition1, y=Difference)) + 
+  geom_hline(yintercept = 0) +
+  geom_point(size=4,stroke=1, aes(colour = Participant)) +
+  scale_color_viridis(discrete = TRUE) +
+  coord_cartesian(xlim = c(0, 100), ylim = c(-50, 50)) +
+  theme_bw() +
+  theme(plot.title = element_text(size=22),
+        axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 14, colour="black"),
+        axis.text.y = element_text(size = 16, colour="black"),
+        axis.title.y = element_text(size = 18),
+        legend.position = "none") +
+  labs(title="Paired observations") #+
+  # coord_fixed(xlim = c(0, 2500), ylim = c(0, 2500))
+p
+```
+
+![](new_shiftdhd_files/figure-markdown_github/unnamed-chunk-12-1.png)
+
+``` r
+# save figure
+# ggsave(filename='./figures/figure_scatter.png',width=7,height=5) #path=pathname
+```
+
+Shift function for paired marginals
+-----------------------------------
+
+``` r
+df <- rogme::mkt2(gp1, gp2)
+# compute shift function
+sf <- rogme::shiftdhd_pbci(data = df, formula = obs ~ gr, nboot = 200)[,3:7]
+
+# plot shift function
+psf <- plot_sf(sf, plot_theme = 2, symb_size = 3)
+```
+
+    ## Scale for 'alpha' is already present. Adding another scale for 'alpha',
+    ## which will replace the existing scale.
+
+``` r
+# change axis labels
+psf <- psf +
+  labs(x = "Condition 1 quantiles (ms)",
+       y = "Condition 1 - Condition 2 \nquantile differences (ms)")
+
+# add labels for deciles 1 & 9
+psf <- add_sf_lab(psf, round(sf, digits = 1), y_lab_nudge = 0.5)
+psf
+```
+
+![](new_shiftdhd_files/figure-markdown_github/unnamed-chunk-13-1.png)
+
+``` r
+# save figure
+# ggsave(filename='./figures/figure_sf_dhd.png',width=7,height=5) #path=pathname
+```
+
+Shift function for pairwise differences
+---------------------------------------
+
+``` r
+# compute shift function
+sf2 <- shiftpdhd_pbci(x = gp1, y = gp2, nboot = 200)[,3:7]
+
+# plot shift function
+psf <- plot_sf(sf2, plot_theme = 2, symb_size = 3)
+```
+
+    ## Scale for 'alpha' is already present. Adding another scale for 'alpha',
+    ## which will replace the existing scale.
+
+``` r
+# change axis labels
+psf <- psf +
+  labs(x = "Condition 1 quantiles (ms)",
+       y = "Quantiles of \npairwise differences (ms)")
+
+# add labels for deciles 1 & 9
+psf <- add_sf_lab(psf, round(sf2), y_lab_nudge = 1)
+psf
+```
+
+![](new_shiftdhd_files/figure-markdown_github/unnamed-chunk-14-1.png)
+
+``` r
+# save figure
+# ggsave(filename='./figures/figure_sf_pdhd.png',width=7,height=5) #path=pathname
 ```
