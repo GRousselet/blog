@@ -9,22 +9,19 @@ Guillaume A. Rousselet
     -   [Illustrate data](#illustrate-data)
     -   [Existing shift function](#existing-shift-function)
     -   [New shift function](#new-shift-function)
+    -   [Difference asymmetry function](#difference-asymmetry-function)
 -   [Example 2: uniform shift + normal noise](#example-2-uniform-shift-normal-noise)
     -   [Make data](#make-data-1)
     -   [Illustrate data](#illustrate-data-1)
     -   [Shift function for paired marginals](#shift-function-for-paired-marginals)
     -   [Shift function for pairwise differences](#shift-function-for-pairwise-differences)
+    -   [Difference asymmetry function](#difference-asymmetry-function-1)
 
 Dependencies
 ============
 
 ``` r
 library(tibble)
-```
-
-    ## Warning: package 'tibble' was built under R version 3.4.3
-
-``` r
 library(viridis)
 ```
 
@@ -33,8 +30,6 @@ library(viridis)
 ``` r
 library(brms)
 ```
-
-    ## Warning: package 'brms' was built under R version 3.4.3
 
     ## Loading required package: Rcpp
 
@@ -141,7 +136,7 @@ p
 
 ``` r
 # save figure
-ggsave(filename='figure_kde.png',width=7,height=5) 
+ggsave(filename='./figures/figure_kde.png',width=7,height=5) 
 ```
 
 ### Scatterplot
@@ -172,7 +167,7 @@ p
 
 ``` r
 # save figure
-ggsave(filename='figure_scatter.png',width=7,height=5) #path=pathname
+ggsave(filename='./figures/figure_scatter.png',width=7,height=5) #path=pathname
 ```
 
 Existing shift function
@@ -205,7 +200,7 @@ psf
 
 ``` r
 # save figure
-ggsave(filename='figure_sf_dhd.png',width=7,height=5) #path=pathname
+ggsave(filename='./figures/figure_sf_dhd.png',width=7,height=5) #path=pathname
 ```
 
 New shift function
@@ -275,7 +270,26 @@ psf
 
 ``` r
 # save figure
-ggsave(filename='figure_sf_pdhd.png',width=7,height=5) #path=pathname
+ggsave(filename='./figures/figure_sf_pdhd.png',width=7,height=5) #path=pathname
+```
+
+Difference asymmetry function
+-----------------------------
+
+``` r
+# compute difference asymmetry function
+daf <- rogme::asymdhd(gp1 - gp2)
+
+# plot difference asymmetry function
+psf <- plot_diff_asym(daf$output)
+psf
+```
+
+![](new_shiftdhd_files/figure-markdown_github/unnamed-chunk-8-1.png)
+
+``` r
+# save figure
+ggsave(filename='./figures/figure_daf.png',width=7,height=5) #path=pathname
 ```
 
 Example 2: uniform shift + normal noise
@@ -355,11 +369,11 @@ p <- ggplot(df, aes(RT)) + theme_classic() +
 p
 ```
 
-![](new_shiftdhd_files/figure-markdown_github/unnamed-chunk-9-1.png)
+![](new_shiftdhd_files/figure-markdown_github/unnamed-chunk-10-1.png)
 
 ``` r
 # save figure
-# ggsave(filename='./figures/figure_kde.png',width=7,height=5) 
+ggsave(filename='./figures/figure_kde2.png',width=7,height=5)
 ```
 
 ### Pairwise differences
@@ -391,11 +405,11 @@ p <- ggplot(df, aes(Difference)) + theme_classic() +
 p
 ```
 
-![](new_shiftdhd_files/figure-markdown_github/unnamed-chunk-10-1.png)
+![](new_shiftdhd_files/figure-markdown_github/unnamed-chunk-11-1.png)
 
 ``` r
 # save figure
-# ggsave(filename='./figures/figure_kde.png',width=7,height=5) 
+ggsave(filename='./figures/figure_diff.png',width=7,height=5)
 ```
 
 ### Scatterplot
@@ -422,11 +436,11 @@ p <- ggplot(df, aes(x=Condition1, y=Condition2)) +
 p
 ```
 
-![](new_shiftdhd_files/figure-markdown_github/unnamed-chunk-11-1.png)
+![](new_shiftdhd_files/figure-markdown_github/unnamed-chunk-12-1.png)
 
 ``` r
 # save figure
-# ggsave(filename='./figures/figure_scatter.png',width=7,height=5) #path=pathname
+ggsave(filename='./figures/figure_scatter2_1.png',width=7,height=5) #path=pathname
 ```
 
 ### Scatterplot2
@@ -453,11 +467,11 @@ p <- ggplot(df, aes(x=Condition1, y=Difference)) +
 p
 ```
 
-![](new_shiftdhd_files/figure-markdown_github/unnamed-chunk-12-1.png)
+![](new_shiftdhd_files/figure-markdown_github/unnamed-chunk-13-1.png)
 
 ``` r
 # save figure
-# ggsave(filename='./figures/figure_scatter.png',width=7,height=5) #path=pathname
+ggsave(filename='./figures/figure_scatter2_2.png',width=7,height=5) #path=pathname
 ```
 
 Shift function for paired marginals
@@ -486,11 +500,11 @@ psf <- add_sf_lab(psf, round(sf, digits = 1), y_lab_nudge = 0.5)
 psf
 ```
 
-![](new_shiftdhd_files/figure-markdown_github/unnamed-chunk-13-1.png)
+![](new_shiftdhd_files/figure-markdown_github/unnamed-chunk-14-1.png)
 
 ``` r
 # save figure
-# ggsave(filename='./figures/figure_sf_dhd.png',width=7,height=5) #path=pathname
+ggsave(filename='./figures/figure_sf_dhd2.png',width=7,height=5) #path=pathname
 ```
 
 Shift function for pairwise differences
@@ -518,9 +532,28 @@ psf <- add_sf_lab(psf, round(sf2), y_lab_nudge = 1)
 psf
 ```
 
-![](new_shiftdhd_files/figure-markdown_github/unnamed-chunk-14-1.png)
+![](new_shiftdhd_files/figure-markdown_github/unnamed-chunk-15-1.png)
 
 ``` r
 # save figure
-# ggsave(filename='./figures/figure_sf_pdhd.png',width=7,height=5) #path=pathname
+ggsave(filename='./figures/figure_sf_pdhd2.png',width=7,height=5) #path=pathname
+```
+
+Difference asymmetry function
+-----------------------------
+
+``` r
+# compute difference asymmetry function
+daf <- rogme::asymdhd(gp1 - gp2)
+
+# plot difference asymmetry function
+psf <- plot_diff_asym(daf$output)
+psf
+```
+
+![](new_shiftdhd_files/figure-markdown_github/unnamed-chunk-16-1.png)
+
+``` r
+# save figure
+ggsave(filename='./figures/figure_daf2.png',width=7,height=5) #path=pathname
 ```
