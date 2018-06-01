@@ -1,0 +1,79 @@
+# functions to generate random numbers from g & h distributions
+# from Rand Wilcox's Rallfun-v34.txt
+
+rmul<-function(n,p=2,cmat=diag(rep(1,p)),rho=NA,
+mar.fun=ghdist,OP=TRUE,g=0,h=0,...){
+#
+# generate n observations from a p-variate dist
+# By default, use normal distributions.
+#
+# Can generate data form a g-and-h distribution via the arguments
+#  g and h
+#
+# Example rmul(30,p=4,rho=.3,g=.5,h=.2) will
+# generate 30 vectors from a 4-variate distribution where the marginals
+# have a g-and-h distribution with g=.5 and h=.2.
+#
+# This function is similar to ghmul, only here, generate the marginal values
+# and then transform the data to have correlation matrix cmat
+#
+# cmat is the correlation matrix
+# if argument
+# rho is specified, the correlations are taken to
+# have a this common value.
+#
+#OP= TRUE:
+# Method (e.g. Browne, M. W. (1968) A comparison of factor analytic
+# techniques. Psychometrika, 33, 267-334.
+#  Let U'U=R be the Cholesky decomposition of R. Generate independent data
+#  from some dist yielding X. Then XU has population correlation matrix R
+#
+#  OP=FALSE, use mvrnorm to generate data then transform marginals to g-and-h distribution.
+#
+if(!is.na(rho)){
+if(abs(rho)>1)stop("rho must be between -1 and 1")
+cmat<-matrix(rho,p,p)
+diag(cmat)<-1
+}
+if(OP){
+np<-n*p
+if(identical(mar.fun,ghdist))x<-matrix(mar.fun(np,g=g,h=h),nrow=n,ncol=p)
+else x<-matrix(mar.fun(np,...),nrow=n,ncol=p)
+rmat<-matsqrt(cmat)
+x<-x%*%rmat
+}
+if(!OP){
+library(MASS)
+x=mvrnorm(n,rep(0,p),cmat)
+if(g==0)x=x*exp(h*x^2/2)
+if(g>0)x=(exp(g*x)-1)*exp(h*x^2/2)/g
+}
+x
+}
+
+ghdist<-function(n,g=0,h=0){
+#
+# generate n observations from a g-and-h dist.
+#
+x<-rnorm(n)
+if (g>0){
+ghdist<-(exp(g*x)-1)*exp(h*x^2/2)/g
+}
+if(g==0)ghdist<-x*exp(h*x^2/2)
+ghdist
+}
+
+matsqrt <- function(x) {
+       xev1<-NA
+         xe <- eigen(x)
+         xe1 <- xe$values
+         if(all(xe1 >= 0)) {
+             xev1 <- diag(sqrt(xe1))
+         }
+if(is.na(xev1[1]))stop("The matrix has negative eigenvalues")
+         xval1 <- cbind(xe$vectors)
+         xval1i <- solve(xval1)
+         y <- xval1 %*% xev1 %*% xval1i
+y
+ }
+
