@@ -733,9 +733,9 @@ p
 ggsave(filename='./figures/figure_precision_rho04.png',width=9,height=5) 
 ```
 
-For 70% of estimates to be within +/- 0.1 of the true correlation value (between -0.1 and 0.1), we need at least 85 observations.
+For 70% of estimates to be within +/- 0.1 of the true correlation value (between 0.3 and 0.5), we need at least 85 observations.
 
-For 90% of estimates to be within +/- 0.2 of the true correlation value (between -0.2 and 0.2), we need at least 42 observations.
+For 90% of estimates to be within +/- 0.2 of the true correlation value (between 0.2 and 0.6), we need at least 42 observations.
 
 Probability to replicate an effect (rho=0.4)
 ============================================
