@@ -1,41 +1,20 @@
-Correlation estimation
-================
-Guillaume A. Rousselet
-2018-06-01
+---
+title: "Correlation estimation"
+author: "Guillaume A. Rousselet"
+date: 2018-06-01
+output:
+  github_document:
+    html_preview: yes
+    toc: yes
+    toc_depth: 2
+  # pdf_document:
+  #   number_sections: no
+  #   toc: yes
+  #   toc_depth: 2
+---
 
--   [Dependencies](#dependencies)
--   [Check `cor()` function](#check-cor-function)
-    -   [n = 10](#n-10)
-    -   [n = 100](#n-100)
--   [Fake correlation](#fake-correlation)
--   [Correlation estimates as a function of sample size](#correlation-estimates-as-a-function-of-sample-size)
-    -   [Parameters](#parameters)
-    -   [Generate data](#generate-data)
-    -   [Plot kernel density estimates](#plot-kernel-density-estimates)
-    -   [Precision](#precision)
--   [Probability to replicate an effect](#probability-to-replicate-an-effect)
-    -   [Parameters](#parameters-1)
-    -   [Generate data](#generate-data-1)
-    -   [Illustrate results](#illustrate-results)
--   [Correlation estimates as a function of rho for fixed n](#correlation-estimates-as-a-function-of-rho-for-fixed-n)
-    -   [Parameters](#parameters-2)
-    -   [Generate data](#generate-data-2)
-    -   [Plot kernel density estimates](#plot-kernel-density-estimates-1)
-    -   [Precision](#precision-1)
--   [Correlation estimates as a function of sample size (rho=0.4)](#correlation-estimates-as-a-function-of-sample-size-rho0.4)
-    -   [Parameters](#parameters-3)
-    -   [Generate data](#generate-data-3)
-    -   [Plot kernel density estimates](#plot-kernel-density-estimates-2)
-    -   [Precision](#precision-2)
--   [Probability to replicate an effect (rho=0.4)](#probability-to-replicate-an-effect-rho0.4)
-    -   [Parameters](#parameters-4)
-    -   [Generate data](#generate-data-4)
-    -   [Illustrate results](#illustrate-results-1)
-
-Dependencies
-============
-
-``` r
+# Dependencies
+```{r}
 # Code to generate data from g-and-h distributions.
 # g controls skewness
 # h controls tail thickness
@@ -48,23 +27,13 @@ source('./functions/gh.txt')
 source('./functions/akerd.txt')
 library(ggplot2)
 library(tibble)
-```
-
-    ## Warning: package 'tibble' was built under R version 3.4.3
-
-``` r
 library(viridis)
 ```
 
-    ## Loading required package: viridisLite
+# Check `cor()` function
 
-Check `cor()` function
-======================
-
-n = 10
-------
-
-``` r
+## n = 10
+```{r}
 set.seed(21)
 n <- 10
 g <- 0
@@ -80,12 +49,8 @@ allcorr <- res[upper.tri(res, diag = FALSE)]
 hist(allcorr)
 ```
 
-![](corr_sim_files/figure-markdown_github/unnamed-chunk-2-1.png)
-
-n = 100
--------
-
-``` r
+## n = 100
+```{r}
 set.seed(21)
 n <- 100
 g <- 0
@@ -97,12 +62,8 @@ allcorr <- res[upper.tri(res, diag = FALSE)]
 hist(allcorr, xlim = c(-1, 1))
 ```
 
-![](corr_sim_files/figure-markdown_github/unnamed-chunk-3-1.png)
-
-Fake correlation
-================
-
-``` r
+# Fake correlation
+```{r}
 set.seed(7)
 n <- 30 # sample size
 g <- 0
@@ -138,28 +99,16 @@ ggplot(data=df, aes(x=x, y=y)) + theme_classic() +
   # guides(colour = guide_legend(override.aes = list(size=3), # make thicker legend lines
   #   title = "Precision \n(within +/-)")) + # change legend title
   ggtitle(paste0("Nice looking correlation?! (r=",round(res[1,2],digits = 3),")")) 
-```
-
-![](corr_sim_files/figure-markdown_github/unnamed-chunk-4-1.png)
-
-``` r
 p
-```
 
-    ## [1] 2
-
-``` r
 # save figure
 ggsave(filename='./figures/figure_random_correlation.png',width=7,height=5) 
 ```
 
-Correlation estimates as a function of sample size
-==================================================
+# Correlation estimates as a function of sample size
 
-Parameters
-----------
-
-``` r
+## Parameters
+```{r}
 nseq <- c(seq(10, 100, 10), 150, 200, 300) # sample sizes
 Nn <- length(nseq)
 pts <- seq(-1, 1, 0.025) # KDE points
@@ -173,10 +122,8 @@ p <- 200 # 19900 correlations - sum(upper.tri(matrix(0, p, p), diag = FALSE))
 Nsim <- 10000
 ```
 
-Generate data
--------------
-
-``` r
+## Generate data
+```{r eval=FALSE}
 set.seed(21)
 # declare result matrices
 res.cor <- matrix(data = 0, nrow = Np, ncol = Nn) 
@@ -207,10 +154,8 @@ save(res.cor, res.pre,
      file = "./data/samp_dist.RData")
 ```
 
-Plot kernel density estimates
------------------------------
-
-``` r
+## Plot kernel density estimates
+```{r}
 # get data
 load("./data/samp_dist.RData")
 
@@ -244,19 +189,13 @@ p <- ggplot(df, aes(x, Density)) + theme_classic() +
   guides(colour = guide_legend(override.aes = list(size=3), # make thicker legend lines
         title="Sample size")) # change legend title
 p
-```
 
-![](corr_sim_files/figure-markdown_github/unnamed-chunk-7-1.png)
-
-``` r
 # save figure
 ggsave(filename='./figures/figure_sampling_distributions.png',width=9,height=5) 
 ```
 
-Precision
----------
-
-``` r
+## Precision
+```{r}
 df <- tibble(`Proportion` = as.vector(res.pre),
              `Precision` = rep(preseq, Nn),
              `Size` = rep(nseq, each = Npre))
@@ -305,28 +244,20 @@ p <- ggplot(df, aes(x=Size, y=Proportion)) + theme_classic() +
     title = "Precision \n(within +/-)")) + # change legend title
   ggtitle("Measurement precision") 
 p
-```
 
-![](corr_sim_files/figure-markdown_github/unnamed-chunk-8-1.png)
-
-``` r
 # save figure
 ggsave(filename='./figures/figure_precision.png',width=9,height=5) 
 ```
 
-For 70% of estimates to be within +/- 0.1 of the true correlation value (between -0.1 and 0.1), we need at least 109 observations.
+For 70% of estimates to be within +/- 0.1 of the true correlation value (between -0.1 and 0.1), we need at least `r round(approx(y=nseq,x=res.pre[4,],xout=0.70)$y)` observations.
 
-For 90% of estimates to be within +/- 0.2 of the true correlation value (between -0.2 and 0.2), we need at least 70 observations.
+For 90% of estimates to be within +/- 0.2 of the true correlation value (between -0.2 and 0.2), we need at least `r round(approx(y=nseq,x=res.pre[8,],xout=0.90)$y)` observations.
 
-Probability to replicate an effect
-==================================
-
+# Probability to replicate an effect
 For a given precision, what is the probability to observe similar effects in two consecutive experiments? In other words, what is the probability that two measurements differ by at most a certain amount?
 
-Parameters
-----------
-
-``` r
+## Parameters
+```{r}
 nseq <- c(seq(10, 100, 10), 150, 200, 300) # sample sizes
 Nn <- length(nseq)
 preseq <- seq(0.025, 0.2, 0.025) # precision bounds
@@ -338,10 +269,8 @@ p <- 500 # 124750 correlations - sum(upper.tri(matrix(0, p, p), diag = FALSE))
 Nsim <- 10000
 ```
 
-Generate data
--------------
-
-``` r
+## Generate data
+```{r eval=FALSE}
 set.seed(21)
 # declare result matrices
 res.rep <- matrix(data = 0, nrow = Npre, ncol = Nn)
@@ -374,10 +303,8 @@ save(res.rep,
      file = "./data/replication.RData")
 ```
 
-Illustrate results
-------------------
-
-``` r
+## Illustrate results
+```{r}
 load("./data/replication.RData")
 df <- tibble(`Proportion` = as.vector(res.rep),
              `Precision` = rep(preseq*2, Nn),
@@ -427,28 +354,20 @@ p <- ggplot(df, aes(x=Size, y=Proportion)) + theme_classic() +
     title = "Difference \n(at most)")) + # change legend title
   ggtitle("Replication precision") 
 p
-```
 
-![](corr_sim_files/figure-markdown_github/unnamed-chunk-11-1.png)
-
-``` r
 # save figure
 ggsave(filename='./figures/figure_replication.png',width=9,height=5) 
 ```
 
-For 80% of replications to be at most 0.2 apart, we need at least 83 observations.
+For 80% of replications to be at most 0.2 apart, we need at least `r round(approx(y=nseq,x=res.rep[4,],xout=0.8)$y)` observations.
 
 What happens when there is an effect?
 
-Correlation estimates as a function of rho for fixed n
-======================================================
-
+# Correlation estimates as a function of rho for fixed n
 For a given sample size, estimate correlations for different Pearson's population (rho) correlations.
 
-Parameters
-----------
-
-``` r
+## Parameters
+```{r}
 n <- 30 # sample size
 rhoseq <- seq(0, 0.9, 0.1) # rho
 Nrho <- length(rhoseq)
@@ -463,10 +382,8 @@ p <- 200 # 19900 correlations - sum(upper.tri(matrix(0, p, p), diag = FALSE))
 Nsim <- 10000
 ```
 
-Generate data
--------------
-
-``` r
+## Generate data
+```{r eval=FALSE}
 set.seed(666)
 # declare result matrices
 res.cor <- matrix(data = 0, nrow = Np, ncol = Nrho)
@@ -497,10 +414,8 @@ save(res.cor, res.pre,
      file = "./data/samp_dist_rho.RData")
 ```
 
-Plot kernel density estimates
------------------------------
-
-``` r
+## Plot kernel density estimates
+```{r}
 # get data
 load("./data/samp_dist_rho.RData")
 
@@ -534,19 +449,13 @@ p <- ggplot(df, aes(x, Density)) + theme_classic() +
   guides(colour = guide_legend(override.aes = list(size=3), # make thicker legend lines
         title="Population \ncorrelation")) # change legend title
 p
-```
 
-![](corr_sim_files/figure-markdown_github/unnamed-chunk-14-1.png)
-
-``` r
 # save figure
 ggsave(filename='./figures/figure_sampling_distributions_rho.png',width=9,height=5) 
 ```
 
-Precision
----------
-
-``` r
+## Precision
+```{r}
 df <- tibble(`Proportion` = as.vector(res.pre),
              `Precision` = rep(preseq, Nrho),
              `Rho` = rep(rhoseq, each = Npre))
@@ -594,24 +503,17 @@ p <- ggplot(df, aes(x=Rho, y=Proportion)) + theme_classic() +
     title = "Precision \n(within +/-)")) + # change legend title
   ggtitle("Measurement precision (n=30)") 
 p
-```
 
-![](corr_sim_files/figure-markdown_github/unnamed-chunk-15-1.png)
-
-``` r
 # save figure
 ggsave(filename='./figures/figure_precision_rho.png',width=9,height=5) 
 ```
 
 Let's look in more detail at the sampling distributions for a generous rho = 0.4.
 
-Correlation estimates as a function of sample size (rho=0.4)
-============================================================
+# Correlation estimates as a function of sample size (rho=0.4)
 
-Parameters
-----------
-
-``` r
+## Parameters
+```{r}
 nseq <- c(seq(10, 100, 10), 150, 200, 300) # sample sizes
 Nn <- length(nseq)
 pts <- seq(-1, 1, 0.025) # KDE points
@@ -625,10 +527,8 @@ p <- 200 # 19900 correlations - sum(upper.tri(matrix(0, p, p), diag = FALSE))
 Nsim <- 10000
 ```
 
-Generate data
--------------
-
-``` r
+## Generate data
+```{r eval=FALSE}
 set.seed(21)
 # declare result matrices
 res.cor <- matrix(data = 0, nrow = Np, ncol = Nn) 
@@ -659,10 +559,8 @@ save(res.cor, res.pre,
      file = "./data/samp_dist_rho04.RData")
 ```
 
-Plot kernel density estimates
------------------------------
-
-``` r
+## Plot kernel density estimates
+```{r}
 # get data
 load("./data/samp_dist_rho04.RData")
 
@@ -696,19 +594,13 @@ p <- ggplot(df, aes(x, Density)) + theme_classic() +
   guides(colour = guide_legend(override.aes = list(size=3), # make thicker legend lines
         title="Sample size")) # change legend title
 p
-```
 
-![](corr_sim_files/figure-markdown_github/unnamed-chunk-18-1.png)
-
-``` r
 # save figure
 ggsave(filename='./figures/figure_sampling_distributions_rho04.png',width=9,height=5) 
 ```
 
-Precision
----------
-
-``` r
+## Precision
+```{r}
 df <- tibble(`Proportion` = as.vector(res.pre),
              `Precision` = rep(preseq, Nn),
              `Size` = rep(nseq, each = Npre))
@@ -757,28 +649,20 @@ p <- ggplot(df, aes(x=Size, y=Proportion)) + theme_classic() +
     title = "Precision \n(within +/-)")) + # change legend title
   ggtitle("Measurement precision (rho=0.4)") 
 p
-```
 
-![](corr_sim_files/figure-markdown_github/unnamed-chunk-19-1.png)
-
-``` r
 # save figure
 ggsave(filename='./figures/figure_precision_rho04.png',width=9,height=5) 
 ```
 
-For 70% of estimates to be within +/- 0.1 of the true correlation value (between 0.3 and 0.5), we need at least 78 observations.
+For 70% of estimates to be within +/- 0.1 of the true correlation value (between 0.3 and 0.5), we need at least `r round(approx(y=nseq,x=res.pre[4,],xout=0.70)$y)` observations.
 
-For 90% of estimates to be within +/- 0.2 of the true correlation value (between 0.2 and 0.6), we need at least 50 observations.
+For 90% of estimates to be within +/- 0.2 of the true correlation value (between 0.2 and 0.6), we need at least `r round(approx(y=nseq,x=res.pre[8,],xout=0.90)$y)` observations.
 
-Probability to replicate an effect (rho=0.4)
-============================================
-
+# Probability to replicate an effect (rho=0.4)
 For a given precision, what is the probability to observe similar effects in two consecutive experiments? In other words, what is the probability that two measurements differ by at most a certain amount?
 
-Parameters
-----------
-
-``` r
+## Parameters
+```{r}
 nseq <- c(seq(10, 100, 10), 150, 200, 300) # sample sizes
 Nn <- length(nseq)
 preseq <- seq(0.025, 0.2, 0.025) # precision bounds
@@ -790,10 +674,8 @@ p <- 500 # 124750 correlations - sum(upper.tri(matrix(0, p, p), diag = FALSE))
 Nsim <- 10000
 ```
 
-Generate data
--------------
-
-``` r
+## Generate data
+```{r eval=FALSE}
 set.seed(21)
 # declare result matrices
 res.rep <- matrix(data = 0, nrow = Npre, ncol = Nn)
@@ -826,10 +708,8 @@ save(res.rep,
      file = "./data/replication_rho04.RData")
 ```
 
-Illustrate results
-------------------
-
-``` r
+## Illustrate results
+```{r}
 load("./data/replication_rho04.RData")
 df <- tibble(`Proportion` = as.vector(res.rep),
              `Precision` = rep(preseq*2, Nn),
@@ -879,13 +759,10 @@ p <- ggplot(df, aes(x=Size, y=Proportion)) + theme_classic() +
     title = "Difference \n(at most)")) + # change legend title
   ggtitle("Replication precision (rho=0.4)") 
 p
-```
 
-![](corr_sim_files/figure-markdown_github/unnamed-chunk-22-1.png)
-
-``` r
 # save figure
 ggsave(filename='./figures/figure_replication_rho04.png',width=9,height=5) 
 ```
 
-For 80% of replications to be at most 0.2 apart, we need at least 59 observations.
+For 80% of replications to be at most 0.2 apart, we need at least `r round(approx(y=nseq,x=res.rep[4,],xout=0.8)$y)` observations.
+
