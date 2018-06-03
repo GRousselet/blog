@@ -4,9 +4,6 @@ Guillaume A. Rousselet
 2018-06-01
 
 -   [Dependencies](#dependencies)
--   [Check `cor()` function](#check-cor-function)
-    -   [n = 10](#n-10)
-    -   [n = 100](#n-100)
 -   [Correlation estimates as a function of sample size](#correlation-estimates-as-a-function-of-sample-size)
     -   [Parameters](#parameters)
     -   [Generate data](#generate-data)
@@ -59,47 +56,6 @@ library(viridis)
 
     ## Loading required package: viridisLite
 
-Check `cor()` function
-======================
-
-n = 10
-------
-
-``` r
-set.seed(21)
-n <- 10
-g <- 0
-h <- 0
-p <- 1000 # 499500 correlations in one go
-# generate data from g&h distributions with given correlation
-data <- rmul(n,p=p,cmat=diag(rep(1,p)),rho=0,mar.fun=ghdist,OP=TRUE,g=g,h=h)
-# compute all pairwise correlations
-res <- cor(data, method = "spearman")
-# get upper triangle of unique correlations
-allcorr <- res[upper.tri(res, diag = FALSE)]
-# plot histogram
-hist(allcorr)
-```
-
-![](corr_sim_spearman_files/figure-markdown_github/unnamed-chunk-2-1.png)
-
-n = 100
--------
-
-``` r
-set.seed(21)
-n <- 100
-g <- 0
-h <- 0
-p <- 1000 # 499500 correlations in one go!
-data <- rmul(n,p=p,cmat=diag(rep(1,p)),rho=0,mar.fun=ghdist,OP=TRUE,g=g,h=h)
-res <- cor(data, method = "spearman")
-allcorr <- res[upper.tri(res, diag = FALSE)]
-hist(allcorr, xlim = c(-1, 1))
-```
-
-![](corr_sim_spearman_files/figure-markdown_github/unnamed-chunk-3-1.png)
-
 Correlation estimates as a function of sample size
 ==================================================
 
@@ -117,6 +73,7 @@ g <- 0
 h <- 0
 rho <- 0
 p <- 200 # 19900 correlations - sum(upper.tri(matrix(0, p, p), diag = FALSE))
+Nsim <- 10000
 ```
 
 Generate data
@@ -130,9 +87,16 @@ res.pre <- matrix(data = 0, nrow = Npre, ncol = Nn)
 
 for(iter.n in 1:Nn){
   print(paste0("Sample size = ", nseq[iter.n]))
-  data <- rmul(nseq[iter.n],p=p,cmat=diag(rep(1,p)),rho=rho,mar.fun=ghdist,OP=TRUE,g=g,h=h)
-  res <- cor(data, method = "spearman")
-  allcorr <- res[upper.tri(res, diag = FALSE)]
+  
+  ## original code
+  # data <- rmul(nseq[iter.n],p=p,cmat=diag(rep(1,p)),rho=rho,mar.fun=ghdist,OP=TRUE,g=g,h=h)
+  # res <- cor(data, method = "pearson")
+  # allcorr <- res[upper.tri(res, diag = FALSE)]
+  
+  ## code suggested by Jan Vanhove:
+  # https://twitter.com/janhove/status/1002659890589061120/photo/1
+  allcorr <- replicate(Nsim, cor(MASS::mvrnorm(n = nseq[iter.n], mu = c(0,0), Sigma = matrix(c(1, rho, rho, 1), nrow = 2, byrow = TRUE)), method = "spearman")[1,2])
+  
   res.cor[,iter.n] <- akerd(allcorr, pyhat=TRUE, pts=pts, plotit=FALSE)
   
   # Probability of getting estimate within +/- x of population value
@@ -185,7 +149,7 @@ p <- ggplot(df, aes(x, Density)) + theme_classic() +
 p
 ```
 
-![](corr_sim_spearman_files/figure-markdown_github/unnamed-chunk-6-1.png)
+![](corr_sim_spearman_files/figure-markdown_github/unnamed-chunk-4-1.png)
 
 ``` r
 # save figure
@@ -246,7 +210,7 @@ p <- ggplot(df, aes(x=Size, y=Proportion)) + theme_classic() +
 p
 ```
 
-![](corr_sim_spearman_files/figure-markdown_github/unnamed-chunk-7-1.png)
+![](corr_sim_spearman_files/figure-markdown_github/unnamed-chunk-5-1.png)
 
 ``` r
 # save figure
@@ -255,7 +219,7 @@ ggsave(filename='./figures/figure_precision_sp.png',width=9,height=5)
 
 For 70% of estimates to be within +/- 0.1 of the true correlation value (between -0.1 and 0.1), we need at least 110 observations.
 
-For 90% of estimates to be within +/- 0.2 of the true correlation value (between -0.2 and 0.2), we need at least 68 observations.
+For 90% of estimates to be within +/- 0.2 of the true correlation value (between -0.2 and 0.2), we need at least 70 observations.
 
 Probability to replicate an effect
 ==================================
@@ -274,6 +238,7 @@ g <- 0
 h <- 0
 rho <- 0
 p <- 500 # 124750 correlations - sum(upper.tri(matrix(0, p, p), diag = FALSE))
+Nsim <- 10000
 ```
 
 Generate data
@@ -286,12 +251,20 @@ res.rep <- matrix(data = 0, nrow = Npre, ncol = Nn)
 
 for(iter.n in 1:Nn){
   print(paste0("Sample size = ", nseq[iter.n]))
-  data <- rmul(nseq[iter.n],p=p,cmat=diag(rep(1,p)),rho=rho,mar.fun=ghdist,OP=TRUE,g=g,h=h)
-  res <- cor(data, method = "spearman")
-  allcorr1 <- res[upper.tri(res, diag = FALSE)]
-  data <- rmul(nseq[iter.n],p=p,cmat=diag(rep(1,p)),rho=rho,mar.fun=ghdist,OP=TRUE,g=g,h=h)
-  res <- cor(data, method = "spearman")
-  allcorr2 <- res[upper.tri(res, diag = FALSE)]
+  
+  ## original code
+  # data <- rmul(nseq[iter.n],p=p,cmat=diag(rep(1,p)),rho=rho,mar.fun=ghdist,OP=TRUE,g=g,h=h)
+  # res <- cor(data, method = "pearson")
+  # allcorr1 <- res[upper.tri(res, diag = FALSE)]
+  # data <- rmul(nseq[iter.n],p=p,cmat=diag(rep(1,p)),rho=rho,mar.fun=ghdist,OP=TRUE,g=g,h=h)
+  # res <- cor(data, method = "pearson")
+  # allcorr2 <- res[upper.tri(res, diag = FALSE)]
+  
+   ## code suggested by Jan Vanhove:
+  # https://twitter.com/janhove/status/1002659890589061120/photo/1
+  allcorr1 <- replicate(Nsim, cor(MASS::mvrnorm(n = nseq[iter.n], mu = c(0,0), Sigma = matrix(c(1, rho, rho, 1), nrow = 2, byrow = TRUE)), method = "spearman")[1,2])
+  
+  allcorr2 <- replicate(Nsim, cor(MASS::mvrnorm(n = nseq[iter.n], mu = c(0,0), Sigma = matrix(c(1, rho, rho, 1), nrow = 2, byrow = TRUE)), method = "spearman")[1,2])
   
   # Probability of getting estimates at most x units of each other
   for(iter.p in 1:Npre){
@@ -359,7 +332,7 @@ p <- ggplot(df, aes(x=Size, y=Proportion)) + theme_classic() +
 p
 ```
 
-![](corr_sim_spearman_files/figure-markdown_github/unnamed-chunk-10-1.png)
+![](corr_sim_spearman_files/figure-markdown_github/unnamed-chunk-8-1.png)
 
 ``` r
 # save figure
@@ -390,6 +363,7 @@ g <- 0
 h <- 0
 # rho <- 0
 p <- 200 # 19900 correlations - sum(upper.tri(matrix(0, p, p), diag = FALSE))
+Nsim <- 10000
 ```
 
 Generate data
@@ -403,9 +377,16 @@ res.pre <- matrix(data = 0, nrow = Npre, ncol = Nrho)
 
 for(iter.rho in 1:Nrho){
   print(paste0("rho = ", rhoseq[iter.rho]))
-  data <- rmul(n,p=p,cmat=diag(rep(1,p)),rho=rhoseq[iter.rho],mar.fun=ghdist,OP=TRUE,g=g,h=h)
-  res <- cor(data, method = "spearman")
-  allcorr <- res[upper.tri(res, diag = FALSE)]
+  
+  ## original code:
+  # data <- rmul(n,p=p,cmat=diag(rep(1,p)),rho=rhoseq[iter.rho],mar.fun=ghdist,OP=TRUE,g=g,h=h)
+  # res <- cor(data, method = "pearson")
+  # allcorr <- res[upper.tri(res, diag = FALSE)]
+  
+  ## code suggested by Jan Vanhove:
+  # https://twitter.com/janhove/status/1002659890589061120/photo/1
+  allcorr <- replicate(Nsim, cor(MASS::mvrnorm(n = n, mu = c(0,0), Sigma = matrix(c(1, rhoseq[iter.rho], rhoseq[iter.rho], 1), nrow = 2, byrow = TRUE)), method = "spearman")[1,2])
+  
   res.cor[,iter.rho] <- akerd(allcorr, pyhat=TRUE, pts=pts, plotit=FALSE)
   
   # Probability of getting estimate within +/- x of population value
@@ -458,7 +439,7 @@ p <- ggplot(df, aes(x, Density)) + theme_classic() +
 p
 ```
 
-![](corr_sim_spearman_files/figure-markdown_github/unnamed-chunk-13-1.png)
+![](corr_sim_spearman_files/figure-markdown_github/unnamed-chunk-11-1.png)
 
 ``` r
 # save figure
@@ -518,7 +499,7 @@ p <- ggplot(df, aes(x=Rho, y=Proportion)) + theme_classic() +
 p
 ```
 
-![](corr_sim_spearman_files/figure-markdown_github/unnamed-chunk-14-1.png)
+![](corr_sim_spearman_files/figure-markdown_github/unnamed-chunk-12-1.png)
 
 ``` r
 # save figure
@@ -544,6 +525,7 @@ g <- 0
 h <- 0
 rho <- 0.4
 p <- 200 # 19900 correlations - sum(upper.tri(matrix(0, p, p), diag = FALSE))
+Nsim <- 10000
 ```
 
 Generate data
@@ -557,9 +539,16 @@ res.pre <- matrix(data = 0, nrow = Npre, ncol = Nn)
 
 for(iter.n in 1:Nn){
   print(paste0("Sample size = ", nseq[iter.n]))
-  data <- rmul(nseq[iter.n],p=p,cmat=diag(rep(1,p)),rho=rho,mar.fun=ghdist,OP=TRUE,g=g,h=h)
-  res <- cor(data, method = "spearman")
-  allcorr <- res[upper.tri(res, diag = FALSE)]
+  
+  ## original code
+  # data <- rmul(nseq[iter.n],p=p,cmat=diag(rep(1,p)),rho=rho,mar.fun=ghdist,OP=TRUE,g=g,h=h)
+  # res <- cor(data, method = "pearson")
+  # allcorr <- res[upper.tri(res, diag = FALSE)]
+  
+   ## code suggested by Jan Vanhove:
+  # https://twitter.com/janhove/status/1002659890589061120/photo/1
+  allcorr <- replicate(Nsim, cor(MASS::mvrnorm(n = nseq[iter.n], mu = c(0,0), Sigma = matrix(c(1, rho, rho, 1), nrow = 2, byrow = TRUE)), method = "spearman")[1,2])
+  
   res.cor[,iter.n] <- akerd(allcorr, pyhat=TRUE, pts=pts, plotit=FALSE)
   
   # Probability of getting estimate within +/-x% of population value
@@ -612,7 +601,7 @@ p <- ggplot(df, aes(x, Density)) + theme_classic() +
 p
 ```
 
-![](corr_sim_spearman_files/figure-markdown_github/unnamed-chunk-17-1.png)
+![](corr_sim_spearman_files/figure-markdown_github/unnamed-chunk-15-1.png)
 
 ``` r
 # save figure
@@ -645,12 +634,12 @@ df.seg4 <- tibble(x=tmp.pos, xend=tmp.pos,
 # make plot
 p <- ggplot(df, aes(x=Size, y=Proportion)) + theme_classic() +
   # geom_abline(intercept=0.7, slope=0, colour="grey20") +
-  # geom_segment(data = df.seg1, aes(x=x, y=y, xend=xend, yend=yend)) +
-  # geom_segment(data = df.seg2, aes(x=x, y=y, xend=xend, yend=yend),
-  #              arrow = arrow(length = unit(0.2, "cm"))) +
-  # geom_segment(data = df.seg3, aes(x=x, y=y, xend=xend, yend=yend)) +
-  # geom_segment(data = df.seg4, aes(x=x, y=y, xend=xend, yend=yend),
-  #              arrow = arrow(length = unit(0.2, "cm"))) +
+  geom_segment(data = df.seg1, aes(x=x, y=y, xend=xend, yend=yend)) +
+  geom_segment(data = df.seg2, aes(x=x, y=y, xend=xend, yend=yend),
+               arrow = arrow(length = unit(0.2, "cm"))) +
+  geom_segment(data = df.seg3, aes(x=x, y=y, xend=xend, yend=yend)) +
+  geom_segment(data = df.seg4, aes(x=x, y=y, xend=xend, yend=yend),
+               arrow = arrow(length = unit(0.2, "cm"))) +
   geom_line(aes(colour = Precision), size = 1) + 
   scale_color_viridis(discrete = TRUE) +
   scale_x_continuous(breaks=nseq, 
@@ -673,15 +662,17 @@ p <- ggplot(df, aes(x=Size, y=Proportion)) + theme_classic() +
 p
 ```
 
-![](corr_sim_spearman_files/figure-markdown_github/unnamed-chunk-18-1.png)
+![](corr_sim_spearman_files/figure-markdown_github/unnamed-chunk-16-1.png)
 
 ``` r
 # save figure
 ggsave(filename='./figures/figure_precision_rho04_sp.png',width=9,height=5) 
 ```
 
-<!-- For 70% of estimates to be within +/- 0.1 of the true correlation value (between -0.1 and 0.1), we need at least 69 observations. -->
-<!-- For 90% of estimates to be within +/- 0.2 of the true correlation value (between -0.2 and 0.2), we need at least 71 observations. -->
+For 70% of estimates to be within +/- 0.1 of the true correlation value (between 0.3 and 0.5), we need at least 84 observations.
+
+For 90% of estimates to be within +/- 0.2 of the true correlation value (between 0.2 and 0.6), we need at least 54 observations.
+
 Probability to replicate an effect (rho=0.4)
 ============================================
 
@@ -699,6 +690,7 @@ g <- 0
 h <- 0
 rho <- 0.4
 p <- 500 # 124750 correlations - sum(upper.tri(matrix(0, p, p), diag = FALSE))
+Nsim <- 10000
 ```
 
 Generate data
@@ -711,12 +703,20 @@ res.rep <- matrix(data = 0, nrow = Npre, ncol = Nn)
 
 for(iter.n in 1:Nn){
   print(paste0("Sample size = ", nseq[iter.n]))
-  data <- rmul(nseq[iter.n],p=p,cmat=diag(rep(1,p)),rho=rho,mar.fun=ghdist,OP=TRUE,g=g,h=h)
-  res <- cor(data, method = "spearman")
-  allcorr1 <- res[upper.tri(res, diag = FALSE)]
-  data <- rmul(nseq[iter.n],p=p,cmat=diag(rep(1,p)),rho=rho,mar.fun=ghdist,OP=TRUE,g=g,h=h)
-  res <- cor(data, method = "spearman")
-  allcorr2 <- res[upper.tri(res, diag = FALSE)]
+  
+  ## original code
+  # data <- rmul(nseq[iter.n],p=p,cmat=diag(rep(1,p)),rho=rho,mar.fun=ghdist,OP=TRUE,g=g,h=h)
+  # res <- cor(data, method = "pearson")
+  # allcorr1 <- res[upper.tri(res, diag = FALSE)]
+  # data <- rmul(nseq[iter.n],p=p,cmat=diag(rep(1,p)),rho=rho,mar.fun=ghdist,OP=TRUE,g=g,h=h)
+  # res <- cor(data, method = "pearson")
+  # allcorr2 <- res[upper.tri(res, diag = FALSE)]
+  
+  ## code suggested by Jan Vanhove:
+  # https://twitter.com/janhove/status/1002659890589061120/photo/1
+  allcorr1 <- replicate(Nsim, cor(MASS::mvrnorm(n = nseq[iter.n], mu = c(0,0), Sigma = matrix(c(1, rho, rho, 1), nrow = 2, byrow = TRUE)), method = "spearman")[1,2])
+  
+  allcorr2 <- replicate(Nsim, cor(MASS::mvrnorm(n = nseq[iter.n], mu = c(0,0), Sigma = matrix(c(1, rho, rho, 1), nrow = 2, byrow = TRUE)), method = "spearman")[1,2])
   
   # Probability of getting estimates at most x units of each other
   for(iter.p in 1:Npre){
@@ -784,11 +784,11 @@ p <- ggplot(df, aes(x=Size, y=Proportion)) + theme_classic() +
 p
 ```
 
-![](corr_sim_spearman_files/figure-markdown_github/unnamed-chunk-21-1.png)
+![](corr_sim_spearman_files/figure-markdown_github/unnamed-chunk-19-1.png)
 
 ``` r
 # save figure
 ggsave(filename='./figures/figure_replication_rho04_sp.png',width=9,height=5) 
 ```
 
-For 80% of replications to be at most 0.2 apart, we need at least 67 observations.
+For 80% of replications to be at most 0.2 apart, we need at least 64 observations.
