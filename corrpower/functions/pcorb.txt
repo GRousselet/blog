@@ -1,0 +1,47 @@
+# functions from Rallfun-v34.txt
+# http://dornsife.usc.edu/labs/rwilcox/software/
+
+pcorb<-function(x,y){
+#   Compute a .95 confidence interval for Pearson's correlation coefficient.
+#
+#   This function uses an adjusted percentile bootstrap method that
+#   gives good results when the error term is heteroscedastic.
+#
+nboot<-599  #Number of bootstrap samples
+data<-matrix(sample(length(y),size=length(y)*nboot,replace=TRUE),nrow=nboot)
+bvec<-apply(data,1,pcorbsub,x,y) # A 1 by nboot matrix.
+ilow<-15
+ihi<-584
+if(length(y) < 250){
+ilow<-14
+ihi<-585
+}
+if(length(y) < 180){
+ilow<-11
+ihi<-588
+}
+if(length(y) < 80){
+ilow<-8
+ihi<-592
+}
+if(length(y) < 40){
+ilow<-7
+ihi<-593
+}
+bsort<-sort(bvec)
+r<-cor(x,y)
+ci<-c(bsort[ilow],bsort[ihi])
+list(r=r,ci=ci)
+}
+
+pcorbsub<-function(isub, x, y)
+{
+        #
+        #  Compute Pearson's correlation using x[isub] and y[isub]
+        #  isub is a vector of length n,
+        #  a bootstrap sample from the sequence of integers
+        #  1, 2, 3, ..., n
+        #
+        pcorbsub<-cor(x[isub],y[isub])
+        pcorbsub
+}
