@@ -1,0 +1,1009 @@
+---
+title: "Illustration of continuous distributions using quantiles"
+author: "Guillaume A. Rousselet"
+date: "`r Sys.Date()`"
+output:
+  github_document:
+    html_preview: yes
+    toc: yes
+    toc_depth: 2
+  # pdf_document:
+  #   fig_caption: no
+  #   number_sections: no
+  #   toc: yes
+  #   toc_depth: 2
+---
+
+# Dependencies
+```{r message=FALSE}
+rm(list=ls())
+library("OneR")
+library("rogme")
+# library("Hmisc")
+library("retimes")
+library("ggbeeswarm")
+library("cowplot")
+```
+
+```{r}
+sessionInfo()
+```
+
+# Create data
+
+We create data with four patterns of differences:
+
+- no clear differences;
+- uniform shift;
+- late differences;
+- early differences.
+
+Same example we used in Rousselet et al. (2017).
+
+```{r}
+
+nobs <- 1000 # number of observations per group
+
+# ---------------------------------------------------
+# Panel A:
+# no clear differences
+# ---------------------------------------------------
+
+set.seed(3)
+g1 <- rexgauss(nobs, mu=300, sigma=10, tau=30)
+g2 <- rexgauss(nobs, mu=300, sigma=10, tau=30)
+
+# make tibble
+dfA <- mkt2(g1,g2)
+
+# ---------------------------------------------------
+# Panel B:
+# Weak early differences, then increasing differences
+# ---------------------------------------------------
+
+nobs <- 1000 # number of observations per group
+
+set.seed(3)
+g1 <- rexgauss(nobs, mu=300, sigma=10, tau=30)
+g2 <- rexgauss(nobs, mu=300, sigma=17, tau=70)
+
+# make tibble
+dfB <- mkt2(g1,g2)
+
+# ------------------------------------------------
+# Panel C:
+# Complete shift
+# ------------------------------------------------
+
+set.seed(3)
+g1<-rexgauss(nobs, mu=300, sigma=10, tau=50)
+g2<-rexgauss(nobs, mu=300, sigma=10, tau=50) + 50
+
+# make tibble
+dfC <- mkt2(g1,g2)
+
+# ------------------------------------------------
+# Panel D:
+# Early differences, then decreasing differences
+# ------------------------------------------------
+
+set.seed(1)
+g1<-rexgauss(nobs, mu=400, sigma=20, tau=50)
+g2<-rexgauss(nobs, mu=370, sigma=20, tau=70)
+
+# make tibble
+dfD <- mkt2(g1,g2)
+```
+
+# Scatterplots
+Now some `ggplot2` magic.
+
+## No clear differences
+```{r}
+p <- ggplot(dfA, aes(x = gr, y = obs, fill = gr, colour = gr, shape = gr)) + 
+  geom_jitter(shape = 21, colour = "black", 
+              size = 1.25, width = 0.3, alpha = 0.3) +
+  scale_fill_manual(values=c("grey40", "orange1")) +
+  theme_bw() + 
+  theme(legend.position = "none") + 
+  theme(axis.title.x = element_text(size = 16, face = "bold"), 
+        axis.text.x = element_text(size = 16),
+        axis.text.y = element_text(size = 16)) + 
+  scale_y_continuous(breaks=seq(200,800,100)) +
+  scale_x_discrete(labels = c("g1", "g2")) + #expand = c(0.02, 0.02)
+  labs(title = "No clear differences", x = "", y = "Response latencies in ms") +
+  theme(plot.title = element_text(face = "bold", size = 20)) + 
+  coord_flip(ylim=c(250, 700))
+psA <- p
+psA
+```
+
+## Increasing differences
+```{r}
+p <- ggplot(dfB, aes(x = gr, y = obs, fill = gr, colour = gr, shape = gr)) + 
+  geom_jitter(shape = 21, colour = "black", 
+              size = 1.25, width = 0.3, alpha = 0.3) +
+  scale_fill_manual(values=c("grey40", "orange1")) +
+  theme_bw() + 
+  theme(legend.position = "none") + 
+  theme(axis.title.x = element_text(size = 16, face = "bold"), 
+        axis.text.x = element_text(size = 16),
+        axis.text.y = element_text(size = 16)) + 
+  scale_y_continuous(breaks=seq(200,800,100)) +
+  scale_x_discrete(labels = c("g1", "g2")) + #expand = c(0.02, 0.02)
+  labs(title = "Increasing differences", x = "", y = "Response latencies in ms") +
+  theme(plot.title = element_text(face = "bold", size = 20)) + 
+  coord_flip(ylim=c(250, 700))
+psB <- p
+psB
+```
+
+## Complete shift
+```{r}
+p <- ggplot(dfC, aes(x = gr, y = obs, fill = gr, colour = gr, shape = gr)) + 
+  geom_jitter(shape = 21, colour = "black", 
+              size = 1.25, width = 0.3, alpha = 0.3) +
+  scale_fill_manual(values=c("grey40", "orange1")) +
+  theme_bw() + 
+  theme(legend.position = "none") + 
+  theme(axis.title.x = element_text(size = 16, face = "bold"), 
+        axis.text.x = element_text(size = 16),
+        axis.text.y = element_text(size = 16)) + 
+  scale_y_continuous(breaks=seq(200,800,100)) +
+  coord_cartesian(ylim=c(250, 700)) +
+  scale_x_discrete(labels = c("g1", "g2")) + #expand = c(0.02, 0.02)
+  labs(title = "Complete shift", x = "", y = "Response latencies in ms") +
+  theme(plot.title = element_text(face = "bold", size = 20)) + 
+  coord_flip(ylim=c(250, 700))
+psC <- p
+psC
+```
+
+## Early differences
+```{r}
+p <- ggplot(dfD, aes(x = gr, y = obs, fill = gr, colour = gr, shape = gr)) + 
+  geom_jitter(shape = 21, colour = "black", 
+              size = 1.25, width = 0.3, alpha = 0.3) +
+  scale_fill_manual(values=c("grey40", "orange1")) +
+  theme_bw() + 
+  theme(legend.position = "none") + 
+  theme(axis.title.x = element_text(size = 16, face = "bold"), 
+        axis.text.x = element_text(size = 16),
+        axis.text.y = element_text(size = 16)) + 
+  scale_y_continuous(breaks=seq(200,800,100)) +
+  scale_x_discrete(labels = c("g1", "g2")) + #expand = c(0.02, 0.02)
+  labs(title = "Early differences", x = "", y = "Response latencies in ms") +
+  theme(plot.title = element_text(face = "bold", size = 20)) + 
+  coord_flip(ylim=c(250, 700))
+psD <- p
+psD
+```
+
+## Summary figure
+```{r eval=FALSE}
+cowplot::plot_grid(psA, psB, psC, psD,
+                   labels=c("", "", "", ""), 
+                   ncol = 4, 
+                   nrow = 1,
+                   rel_heights = c(1, 1, 1, 1), 
+                   label_size = 20, 
+                   hjust = -0.8, 
+                   scale=.95,
+                   align = "v")
+# save figure
+ggsave(filename='./figures/figure_scatter.png',width=20,height=4) 
+```
+
+
+# KDE
+
+## No clear differences
+```{r}
+p <- ggplot(dfA, aes(obs, group = gr, fill = gr)) + theme_bw() + 
+  geom_density(colour = "black", size = 0.75, alpha = 0.5) +
+  scale_fill_manual(values=c("grey40", "orange1")) +
+  theme(axis.title = element_text(size = 16, face = "bold", colour = "black"), 
+        axis.text = element_text(size = 16, colour = "black"),
+        plot.title = element_text(face = "bold", size = 20),
+        legend.position = "none") +
+  coord_cartesian(xlim=c(250, 700)) +
+  scale_x_continuous(breaks=seq(200,800,100)) +
+  labs(title = "No clear differences", y = "Density", x = "Response latencies in ms")
+pdA <- p
+pdA
+```
+
+## Increasing differences
+```{r}
+p <- ggplot(dfB, aes(obs, group = gr, fill = gr)) + theme_bw() + 
+  geom_density(colour = "black", size = 0.75, alpha = 0.5) +
+  scale_fill_manual(values=c("grey40", "orange1")) +
+  theme(axis.title = element_text(size = 16, face = "bold", colour = "black"), 
+        axis.text = element_text(size = 16, colour = "black"),
+        plot.title = element_text(face = "bold", size = 20),
+        legend.position = "none") +
+    coord_cartesian(xlim=c(250, 700)) +
+  scale_x_continuous(breaks=seq(200,800,100)) +
+  labs(title = "Increasing differences", y = "Density", x = "Response latencies in ms")
+pdB <- p
+pdB
+```
+
+## Complete shift
+```{r}
+p <- ggplot(dfC, aes(obs, group = gr, fill = gr)) + theme_bw() + 
+  geom_density(colour = "black", size = 0.75, alpha = 0.5) +
+  scale_fill_manual(values=c("grey40", "orange1")) +
+  theme(axis.title = element_text(size = 16, face = "bold", colour = "black"), 
+        axis.text = element_text(size = 16, colour = "black"),
+        plot.title = element_text(face = "bold", size = 20),
+        legend.position = "none") +
+    coord_cartesian(xlim=c(250, 700)) +
+  scale_x_continuous(breaks=seq(200,800,100)) +
+  labs(title = "Complete shift", y = "Density", x = "Response latencies in ms")
+pdC <- p
+pdC
+```
+
+## Early differences
+```{r}
+p <- ggplot(dfD, aes(obs, group = gr, fill = gr)) + theme_bw() + 
+  geom_density(colour = "black", size = 0.75, alpha = 0.5) +
+  scale_fill_manual(values=c("grey40", "orange1")) +
+  theme(axis.title = element_text(size = 16, face = "bold", colour = "black"), 
+        axis.text = element_text(size = 16, colour = "black"),
+        plot.title = element_text(face = "bold", size = 20),
+        legend.position = "none") +
+    coord_cartesian(xlim=c(250, 700)) +
+  scale_x_continuous(breaks=seq(200,800,100)) +
+  labs(title = "Early differences", y = "Density", x = "Response latencies in ms")
+pdD <- p
+pdD
+```
+
+## Summary figure
+```{r eval=FALSE}
+cowplot::plot_grid(pdA, pdB, pdC, pdD,
+                   labels=c("", "", "", ""), 
+                   ncol = 4, 
+                   nrow = 1,
+                   rel_heights = c(1, 1, 1, 1), 
+                   label_size = 20, 
+                   hjust = -0.8, 
+                   scale=.95,
+                   align = "v")
+# save figure
+ggsave(filename='./figures/figure_kde.png',width=20,height=4) 
+```
+
+# Scatterplots + quantiles
+
+Here we create scatterplots shaped by local density using the `geom_quasirandom` function from the `ggbeeswarm` package.
+
+## No clear differences
+```{r}
+# 1D scatterplots + superimposed deciles
+p <- ggplot(dfA, aes(x = gr, y = obs, fill = gr, colour = gr, shape = gr)) + 
+  ggbeeswarm::geom_quasirandom(shape = 16, size = 1.25, width = 0.4, alpha = 0.5) +
+  scale_colour_manual(values=c("grey40", "orange1")) +
+  theme_bw() + 
+  theme(legend.position = "none") + 
+  theme(axis.title.x = element_text(size = 16, face = "bold"), 
+        axis.text.x = element_text(size = 16),
+        axis.text.y = element_text(size = 16)) + 
+  scale_y_continuous(breaks=seq(200,800,100)) +
+  scale_x_discrete(labels = c("g1", "g2")) + #expand = c(0.02, 0.02)
+  labs(title = "No clear differences", x = "", y = "Response latencies in ms") +
+  theme(plot.title = element_text(face = "bold", size = 20)) + 
+  coord_flip(ylim=c(250, 700))
+p <- plot_hd_bars(p,
+                  col = "black",
+                  q_size = 0.5,
+                  md_size = 1.5,
+                  alpha = 1)
+psqA <- p + coord_flip() # flip axes
+psqA
+```
+
+## Increasing differences
+```{r}
+# 1D scatterplots + superimposed deciles
+p <- ggplot(dfB, aes(x = gr, y = obs, fill = gr, colour = gr, shape = gr)) + 
+  ggbeeswarm::geom_quasirandom(shape = 16, size = 1.25, width = 0.4, alpha = 0.5) +
+  scale_colour_manual(values=c("grey40", "orange1")) +
+  theme_bw() + 
+  theme(legend.position = "none") + 
+  theme(axis.title.x = element_text(size = 16, face = "bold"), 
+        axis.text.x = element_text(size = 16),
+        axis.text.y = element_text(size = 16)) + 
+  scale_y_continuous(breaks=seq(200,800,100)) +
+  scale_x_discrete(labels = c("g1", "g2")) + #expand = c(0.02, 0.02)
+  labs(title = "Increasing differences", x = "", y = "Response latencies in ms") +
+  theme(plot.title = element_text(face = "bold", size = 20)) + 
+  coord_flip(ylim=c(250, 700))
+p <- plot_hd_bars(p,
+                  col = "black",
+                  q_size = 0.5,
+                  md_size = 1.5,
+                  alpha = 1)
+psqB <- p + coord_flip() # flip axes
+psqB
+```
+
+## Complete shift
+```{r}
+# 1D scatterplots + superimposed deciles
+p <- ggplot(dfC, aes(x = gr, y = obs, fill = gr, colour = gr, shape = gr)) + 
+  ggbeeswarm::geom_quasirandom(shape = 16, size = 1.25, width = 0.4, alpha = 0.5) +
+  scale_colour_manual(values=c("grey40", "orange1")) +
+  theme_bw() + 
+  theme(legend.position = "none") + 
+  theme(axis.title.x = element_text(size = 16, face = "bold"), 
+        axis.text.x = element_text(size = 16),
+        axis.text.y = element_text(size = 16)) + 
+  scale_y_continuous(breaks=seq(200,800,100)) +
+  scale_x_discrete(labels = c("g1", "g2")) + #expand = c(0.02, 0.02)
+  labs(title = "Complete shift", x = "", y = "Response latencies in ms") +
+  theme(plot.title = element_text(face = "bold", size = 20)) + 
+  coord_flip(ylim=c(250, 700))
+p <- plot_hd_bars(p,
+                  col = "black",
+                  q_size = 0.5,
+                  md_size = 1.5,
+                  alpha = 1)
+psqC <- p + coord_flip() # flip axes
+psqC
+```
+
+## Early differences
+```{r}
+# 1D scatterplots + superimposed deciles
+p <- ggplot(dfD, aes(x = gr, y = obs, fill = gr, colour = gr, shape = gr)) + 
+  ggbeeswarm::geom_quasirandom(shape = 16, size = 1.25, width = 0.4, alpha = 0.5) +
+  scale_colour_manual(values=c("grey40", "orange1")) +
+  theme_bw() + 
+  theme(legend.position = "none") + 
+  theme(axis.title.x = element_text(size = 16, face = "bold"), 
+        axis.text.x = element_text(size = 16),
+        axis.text.y = element_text(size = 16)) + 
+  scale_y_continuous(breaks=seq(200,800,100)) +
+  scale_x_discrete(labels = c("g1", "g2")) + #expand = c(0.02, 0.02)
+  labs(title = "Early differences", x = "", y = "Response latencies in ms") +
+  theme(plot.title = element_text(face = "bold", size = 20)) + 
+  coord_flip(ylim=c(250, 700))
+p <- plot_hd_bars(p,
+                  col = "black",
+                  q_size = 0.5,
+                  md_size = 1.5,
+                  alpha = 1)
+psqD <- p + coord_flip() # flip axes
+psqD
+```
+
+## Summary figure
+```{r eval=FALSE}
+cowplot::plot_grid(psqA, psqB, psqC, psqD,
+                   labels=c("", "", "", ""), 
+                   ncol = 4, 
+                   nrow = 1,
+                   rel_heights = c(1, 1, 1, 1), 
+                   label_size = 20, 
+                   hjust = -0.8, 
+                   scale=.95,
+                   align = "v")
+# save figure
+ggsave(filename='./figures/figure_scat_quant.png',width=20,height=5) 
+```
+
+# Quantile plots
+
+Two ways to compute Harrell-Davis estimates of the quantiles, using Frank Harrell's `Hmisc` package, or the `rogme` package (Rousselet et al. 2017).
+```{r}
+require("Hmisc")
+x <- rnorm(100)
+qseq <- seq(0.1,0.9,0.1)
+Hmisc::hdquantile(x, probs = qseq)
+rogme::hdseq(x, qseq = qseq)
+```
+
+## No clear differences
+```{r, fig.height=8, fig.width=5}
+out <- tapply(dfA$obs, list(dfA$gr), hdseq)
+
+# panel 1: quantiles
+dfq <- mkt2(out$Group1, out$Group2)
+dfq$q <- factor(rep(qseq,2))
+
+p1 <- ggplot(dfq, aes(x = q, y = obs, colour = gr, group = gr)) + 
+  geom_line(size = 1) +
+  geom_point(size = 3) +
+  scale_colour_manual(values=c("grey40", "orange1")) +
+  theme_bw() + 
+  theme(legend.position = "none") + 
+  theme(axis.title = element_text(size = 16, face = "bold"), 
+        axis.text = element_text(size = 16),
+        plot.title = element_text(face = "bold", size = 20)) +
+  scale_y_continuous(breaks=seq(300,600,100)) +
+    coord_cartesian(ylim = c(250, 600)) +
+  labs(title = "No clear differences", x = "Quantiles", y = "Response latencies in ms")
+
+# panel 2: quantile differences
+dfq <- mkt1(out$Group1 - out$Group2)
+dfq$q <- factor(qseq)
+
+p2 <- ggplot(dfq, aes(x = q, y = obs, colour = gr, group = gr)) + 
+  geom_abline(intercept = 0, slope = 0) +
+  geom_line(size = 1, colour = "black") +
+  geom_point(size = 3, colour = "black") +
+  theme_bw() + 
+  theme(legend.position = "none") + 
+  theme(axis.title = element_text(size = 16, face = "bold"), 
+        axis.text = element_text(size = 16),
+        plot.title = element_text(face = "bold", size = 20)) +
+  scale_y_continuous(breaks=seq(-140,40,20)) +
+    coord_cartesian(ylim = c(-130, 30)) +
+  labs(x = "Quantiles", y = "Group differences")
+
+pqpA <- cowplot::plot_grid(p1, p2,
+                   labels=c("", ""), 
+                   ncol = 1, 
+                   nrow = 2,
+                   rel_heights = c(1, 1), 
+                   label_size = 20, 
+                   hjust = -0.8, 
+                   scale=.95,
+                   align = "v")
+pqpA
+```
+
+## Increasing differences
+```{r, fig.height=8, fig.width=5}
+out <- tapply(dfB$obs, list(dfB$gr), hdseq)
+
+# panel 1: quantiles
+dfq <- mkt2(out$Group1, out$Group2)
+dfq$q <- factor(rep(qseq,2))
+
+p1 <- ggplot(dfq, aes(x = q, y = obs, colour = gr, group = gr)) + 
+  geom_line(size = 1) +
+  geom_point(size = 3) +
+  scale_colour_manual(values=c("grey40", "orange1")) +
+  theme_bw() + 
+  theme(legend.position = "none") + 
+  theme(axis.title = element_text(size = 16, face = "bold"), 
+        axis.text = element_text(size = 16),
+        plot.title = element_text(face = "bold", size = 20)) +
+  scale_y_continuous(breaks=seq(300,600,100)) +
+    coord_cartesian(ylim = c(250, 600)) +
+  labs(title = "Increasing differences", x = "Quantiles", y = "Response latencies in ms")
+
+# panel 2: quantile differences
+dfq <- mkt1(out$Group1 - out$Group2)
+dfq$q <- factor(qseq)
+
+p2 <- ggplot(dfq, aes(x = q, y = obs, colour = gr, group = gr)) + 
+  geom_abline(intercept = 0, slope = 0) +
+  geom_line(size = 1, colour = "black") +
+  geom_point(size = 3, colour = "black") +
+  theme_bw() + 
+  theme(legend.position = "none") + 
+  theme(axis.title = element_text(size = 16, face = "bold"), 
+        axis.text = element_text(size = 16),
+        plot.title = element_text(face = "bold", size = 20)) +
+scale_y_continuous(breaks=seq(-140,40,20)) +
+    coord_cartesian(ylim = c(-130, 30)) +
+  labs(x = "Quantiles", y = "Group differences")
+
+pqpB <- cowplot::plot_grid(p1, p2,
+                   labels=c("", ""), 
+                   ncol = 1, 
+                   nrow = 2,
+                   rel_heights = c(1, 1), 
+                   label_size = 20, 
+                   hjust = -0.8, 
+                   scale=.95,
+                   align = "v")
+pqpB
+```
+
+## Complete shift
+```{r, fig.height=8, fig.width=5}
+out <- tapply(dfC$obs, list(dfC$gr), hdseq)
+
+# panel 1: quantiles
+dfq <- mkt2(out$Group1, out$Group2)
+dfq$q <- factor(rep(qseq,2))
+
+p1 <- ggplot(dfq, aes(x = q, y = obs, colour = gr, group = gr)) + 
+  geom_line(size = 1) +
+  geom_point(size = 3) +
+  scale_colour_manual(values=c("grey40", "orange1")) +
+  theme_bw() + 
+  theme(legend.position = "none") + 
+  theme(axis.title = element_text(size = 16, face = "bold"), 
+        axis.text = element_text(size = 16),
+        plot.title = element_text(face = "bold", size = 20)) +
+  scale_y_continuous(breaks=seq(300,600,100)) +
+    coord_cartesian(ylim = c(250, 600)) +
+  labs(title = "Complete shift", x = "Quantiles", y = "Response latencies in ms")
+
+# panel 2: quantile differences
+dfq <- mkt1(out$Group1 - out$Group2)
+dfq$q <- factor(qseq)
+
+p2 <- ggplot(dfq, aes(x = q, y = obs, colour = gr, group = gr)) + 
+  geom_abline(intercept = 0, slope = 0) +
+  geom_line(size = 1, colour = "black") +
+  geom_point(size = 3, colour = "black") +
+  theme_bw() + 
+  theme(legend.position = "none") + 
+  theme(axis.title = element_text(size = 16, face = "bold"), 
+        axis.text = element_text(size = 16),
+        plot.title = element_text(face = "bold", size = 20)) +
+scale_y_continuous(breaks=seq(-140,40,20)) +
+    coord_cartesian(ylim = c(-130, 30)) +
+  labs(x = "Quantiles", y = "Group differences")
+
+pqpC <- cowplot::plot_grid(p1, p2,
+                   labels=c("", ""), 
+                   ncol = 1, 
+                   nrow = 2,
+                   rel_heights = c(1, 1), 
+                   label_size = 20, 
+                   hjust = -0.8, 
+                   scale=.95,
+                   align = "v")
+pqpC
+```
+
+## Early differences
+```{r, fig.height=8, fig.width=5}
+out <- tapply(dfD$obs, list(dfD$gr), hdseq)
+
+# panel 1: quantiles
+dfq <- mkt2(out$Group1, out$Group2)
+dfq$q <- factor(rep(qseq,2))
+
+p1 <- ggplot(dfq, aes(x = q, y = obs, colour = gr, group = gr)) + 
+  geom_line(size = 1) +
+  geom_point(size = 3) +
+  scale_colour_manual(values=c("grey40", "orange1")) +
+  theme_bw() + 
+  theme(legend.position = "none") + 
+  theme(axis.title = element_text(size = 16, face = "bold"), 
+        axis.text = element_text(size = 16),
+        plot.title = element_text(face = "bold", size = 20)) +
+  scale_y_continuous(breaks=seq(300,600,100)) +
+    coord_cartesian(ylim = c(250, 600)) +
+  labs(title = "Early differences", x = "Quantiles", y = "Response latencies in ms")
+
+# panel 2: quantile differences
+dfq <- mkt1(out$Group1 - out$Group2)
+dfq$q <- factor(qseq)
+
+p2 <- ggplot(dfq, aes(x = q, y = obs, colour = gr, group = gr)) + 
+  geom_abline(intercept = 0, slope = 0) +
+  geom_line(size = 1, colour = "black") +
+  geom_point(size = 3, colour = "black") +
+  theme_bw() + 
+  theme(legend.position = "none") + 
+  theme(axis.title = element_text(size = 16, face = "bold"), 
+        axis.text = element_text(size = 16),
+        plot.title = element_text(face = "bold", size = 20)) +
+scale_y_continuous(breaks=seq(-140,40,20)) +
+    coord_cartesian(ylim = c(-130, 30)) +
+  labs(x = "Quantiles", y = "Group differences")
+
+pqpD <- cowplot::plot_grid(p1, p2,
+                   labels=c("", ""), 
+                   ncol = 1, 
+                   nrow = 2,
+                   rel_heights = c(1, 1), 
+                   label_size = 20, 
+                   hjust = -0.8, 
+                   scale=.95,
+                   align = "v")
+pqpD
+```
+
+## Summary figure
+```{r eval=FALSE}
+cowplot::plot_grid(pqpA, pqpB, pqpC, pqpD,
+                   labels=c("", "", "", ""), 
+                   ncol = 4, 
+                   nrow = 1,
+                   rel_heights = c(1, 1, 1, 1), 
+                   label_size = 20, 
+                   hjust = -0.8, 
+                   scale=.95,
+                   align = "v")
+# save figure
+ggsave(filename='./figures/figure_qplot.png',width=20,height=8) 
+```
+
+# Vincentiles
+
+Vincentiles are computed by sorting the data and splitting them in equi-populated bins (there is the same number of observations in each bin). Then the mean is computed for each bin (Balota et al. 2008; Jiang et al. 2004).
+
+## Split data in equi-populated bins
+```{r eval=FALSE}
+data <- rnorm(21)
+out <- bin(data, nbins = 3, method = "content")
+# table(out)
+# split(data, out)
+sapply(split(data, out), "mean")
+```
+
+## No clear differences
+```{r, fig.height=4, fig.width=5}
+df <- dfA
+out <- tapply(df$obs, list(df$gr), bin, nbins = 9, method = "content")
+out1 <- sapply(split(df$obs[df$gr=="Group1"], out$Group1), "mean")
+out2 <- sapply(split(df$obs[df$gr=="Group2"], out$Group2), "mean")
+
+dfq <- mkt2(out1, out2)
+dfq$q <- factor(rep(qseq*10,2))
+
+p <- ggplot(dfq, aes(x = q, y = obs, colour = gr, group = gr)) + 
+  geom_line(size = 1) +
+  geom_point(size = 3) +
+  scale_colour_manual(values=c("grey40", "orange1")) +
+  theme_bw() + 
+  theme(legend.position = "none") + 
+  theme(axis.title = element_text(size = 16, face = "bold"), 
+        axis.text = element_text(size = 16),
+        plot.title = element_text(face = "bold", size = 20)) +
+  scale_y_continuous(breaks=seq(300,600,100)) +
+    coord_cartesian(ylim = c(250, 600)) +
+  labs(title = "No clear differences", x = "Vincentiles", y = "Response latencies in ms")
+
+p
+pvA <- p
+```
+
+## Increasing differences
+```{r, fig.height=4, fig.width=5}
+df <- dfB
+out <- tapply(df$obs, list(df$gr), bin, nbins = 9, method = "content")
+out1 <- sapply(split(df$obs[df$gr=="Group1"], out$Group1), "mean")
+out2 <- sapply(split(df$obs[df$gr=="Group2"], out$Group2), "mean")
+
+dfq <- mkt2(out1, out2)
+dfq$q <- factor(rep(qseq*10,2))
+
+p <- ggplot(dfq, aes(x = q, y = obs, colour = gr, group = gr)) + 
+  geom_line(size = 1) +
+  geom_point(size = 3) +
+  scale_colour_manual(values=c("grey40", "orange1")) +
+  theme_bw() + 
+  theme(legend.position = "none") + 
+  theme(axis.title = element_text(size = 16, face = "bold"), 
+        axis.text = element_text(size = 16),
+        plot.title = element_text(face = "bold", size = 20)) +
+  scale_y_continuous(breaks=seq(300,600,100)) +
+    coord_cartesian(ylim = c(250, 600)) +
+  labs(title = "Increasing differences", x = "Vincentiles", y = "Response latencies in ms")
+
+p
+pvB <- p
+```
+
+## Complete shift
+```{r, fig.height=4, fig.width=5}
+df <- dfC
+out <- tapply(df$obs, list(df$gr), bin, nbins = 9, method = "content")
+out1 <- sapply(split(df$obs[df$gr=="Group1"], out$Group1), "mean")
+out2 <- sapply(split(df$obs[df$gr=="Group2"], out$Group2), "mean")
+
+dfq <- mkt2(out1, out2)
+dfq$q <- factor(rep(qseq*10,2))
+
+p <- ggplot(dfq, aes(x = q, y = obs, colour = gr, group = gr)) + 
+  geom_line(size = 1) +
+  geom_point(size = 3) +
+  scale_colour_manual(values=c("grey40", "orange1")) +
+  theme_bw() + 
+  theme(legend.position = "none") + 
+  theme(axis.title = element_text(size = 16, face = "bold"), 
+        axis.text = element_text(size = 16),
+        plot.title = element_text(face = "bold", size = 20)) +
+  scale_y_continuous(breaks=seq(300,600,100)) +
+    coord_cartesian(ylim = c(250, 600)) +
+  labs(title = "Complete shift", x = "Vincentiles", y = "Response latencies in ms")
+
+p
+pvC <- p
+```
+
+## Early differences
+```{r, fig.height=4, fig.width=5}
+df <- dfD
+out <- tapply(df$obs, list(df$gr), bin, nbins = 9, method = "content")
+out1 <- sapply(split(df$obs[df$gr=="Group1"], out$Group1), "mean")
+out2 <- sapply(split(df$obs[df$gr=="Group2"], out$Group2), "mean")
+
+dfq <- mkt2(out1, out2)
+dfq$q <- factor(rep(qseq*10,2))
+
+p <- ggplot(dfq, aes(x = q, y = obs, colour = gr, group = gr)) + 
+  geom_line(size = 1) +
+  geom_point(size = 3) +
+  scale_colour_manual(values=c("grey40", "orange1")) +
+  theme_bw() + 
+  theme(legend.position = "none") + 
+  theme(axis.title = element_text(size = 16, face = "bold"), 
+        axis.text = element_text(size = 16),
+        plot.title = element_text(face = "bold", size = 20)) +
+  scale_y_continuous(breaks=seq(300,600,100)) +
+    coord_cartesian(ylim = c(250, 600)) +
+  labs(title = "Early differences", x = "Vincentiles", y = "Response latencies in ms")
+
+p
+pvD <- p
+```
+
+## Summary figure
+```{r eval=FALSE}
+cowplot::plot_grid(pvA, pvB, pvC, pvD,
+                   labels=c("", "", "", ""), 
+                   ncol = 4, 
+                   nrow = 1,
+                   rel_heights = c(1, 1, 1, 1), 
+                   label_size = 20, 
+                   hjust = -0.8, 
+                   scale=.95,
+                   align = "v")
+# save figure
+ggsave(filename='./figures/figure_vinc.png',width=20,height=5) 
+```
+
+Group quantile and Vincentile plots can be created by averaging quantiles and Vincentiles across participants (Balota & Yap, 2011; Ratcliff, 1979). This will be the topic of another post.
+
+# Delta plots
+
+Delta plots show the difference between conditions, bin by bin (for each Vincentile) along the y-axis, as a function of the mean across conditions for each bin along the x-axis (De Jong et al., 1994).
+
+## No clear differences
+```{r, fig.height=4, fig.width=5}
+df <- dfA
+out <- tapply(df$obs, list(df$gr), bin, nbins = 9, method = "content")
+out1 <- sapply(split(df$obs[df$gr=="Group1"], out$Group1), "mean")
+out2 <- sapply(split(df$obs[df$gr=="Group2"], out$Group2), "mean")
+xmean <- rowMeans(cbind(out1,out2))
+
+dfq <- mkt1(out1 - out2)
+dfq$q <- xmean
+
+p <- ggplot(dfq, aes(x = q, y = obs)) + 
+  geom_abline(intercept = 0, slope = 0, "colour"="grey40", linetype="dashed") +
+  geom_line(size = 1) +
+  geom_point(size = 3) +
+  # scale_colour_manual(values=c("grey40", "orange1")) +
+  theme_bw() + 
+  theme(legend.position = "none") + 
+  theme(axis.title = element_text(size = 16, face = "bold"), 
+        axis.text = element_text(size = 16),
+        plot.title = element_text(face = "bold", size = 20)) +
+scale_y_continuous(breaks=seq(-140,40,20)) +
+    coord_cartesian(ylim = c(-140, 30)) +
+  labs(title = "No clear differences", x = "Mean response latencies in ms", y = "Differences in ms")
+
+p
+pdpA <- p
+```
+
+## Increasing differences
+```{r, fig.height=4, fig.width=5}
+df <- dfB
+out <- tapply(df$obs, list(df$gr), bin, nbins = 9, method = "content")
+out1 <- sapply(split(df$obs[df$gr=="Group1"], out$Group1), "mean")
+out2 <- sapply(split(df$obs[df$gr=="Group2"], out$Group2), "mean")
+xmean <- rowMeans(cbind(out1,out2))
+
+dfq <- mkt1(out1 - out2)
+dfq$q <- xmean
+
+p <- ggplot(dfq, aes(x = q, y = obs)) + 
+  geom_abline(intercept = 0, slope = 0, "colour"="grey40", linetype="dashed") +
+  geom_line(size = 1) +
+  geom_point(size = 3) +
+  # scale_colour_manual(values=c("grey40", "orange1")) +
+  theme_bw() + 
+  theme(legend.position = "none") + 
+  theme(axis.title = element_text(size = 16, face = "bold"), 
+        axis.text = element_text(size = 16),
+        plot.title = element_text(face = "bold", size = 20)) +
+scale_y_continuous(breaks=seq(-140,40,20)) +
+    coord_cartesian(ylim = c(-140, 30)) +
+  labs(title = "Increasing differences", x = "Mean response latencies in ms", y = "Differences in ms")
+
+p
+pdpB <- p
+```
+
+## Complete shift
+```{r, fig.height=4, fig.width=5}
+df <- dfC
+out <- tapply(df$obs, list(df$gr), bin, nbins = 9, method = "content")
+out1 <- sapply(split(df$obs[df$gr=="Group1"], out$Group1), "mean")
+out2 <- sapply(split(df$obs[df$gr=="Group2"], out$Group2), "mean")
+xmean <- rowMeans(cbind(out1,out2))
+
+dfq <- mkt1(out1 - out2)
+dfq$q <- xmean
+
+p <- ggplot(dfq, aes(x = q, y = obs)) + 
+  geom_abline(intercept = 0, slope = 0, "colour"="grey40", linetype="dashed") +
+  geom_line(size = 1) +
+  geom_point(size = 3) +
+  # scale_colour_manual(values=c("grey40", "orange1")) +
+  theme_bw() + 
+  theme(legend.position = "none") + 
+  theme(axis.title = element_text(size = 16, face = "bold"), 
+        axis.text = element_text(size = 16),
+        plot.title = element_text(face = "bold", size = 20)) +
+scale_y_continuous(breaks=seq(-140,40,20)) +
+    coord_cartesian(ylim = c(-140, 30)) +
+  labs(title = "Complete shift", x = "Mean response latencies in ms", y = "Differences in ms")
+
+p
+pdpC <- p
+```
+
+## Early differences
+```{r, fig.height=4, fig.width=5}
+df <- dfD
+out <- tapply(df$obs, list(df$gr), bin, nbins = 9, method = "content")
+out1 <- sapply(split(df$obs[df$gr=="Group1"], out$Group1), "mean")
+out2 <- sapply(split(df$obs[df$gr=="Group2"], out$Group2), "mean")
+xmean <- rowMeans(cbind(out1,out2))
+
+dfq <- mkt1(out1 - out2)
+dfq$q <- xmean
+
+p <- ggplot(dfq, aes(x = q, y = obs)) + 
+  geom_abline(intercept = 0, slope = 0, "colour"="grey40", linetype="dashed") +
+  geom_line(size = 1) +
+  geom_point(size = 3) +
+  # scale_colour_manual(values=c("grey40", "orange1")) +
+  theme_bw() + 
+  theme(legend.position = "none") + 
+  theme(axis.title = element_text(size = 16, face = "bold"), 
+        axis.text = element_text(size = 16),
+        plot.title = element_text(face = "bold", size = 20)) +
+scale_y_continuous(breaks=seq(-140,40,20)) +
+    coord_cartesian(ylim = c(-140, 30)) +
+  labs(title = "Early differences", x = "Mean response latencies in ms", y = "Differences in ms")
+
+p
+pdpD <- p
+```
+
+Negative delta plots (nDP) have received particular attention (Ellinghaus & Miller, 2018; Schwarz & Miller, 2012).
+
+## Summary figure
+```{r eval=FALSE}
+cowplot::plot_grid(pdpA, pdpB, pdpC, pdpD,
+                   labels=c("", "", "", ""), 
+                   ncol = 4, 
+                   nrow = 1,
+                   rel_heights = c(1, 1, 1, 1), 
+                   label_size = 20, 
+                   hjust = -0.8, 
+                   scale=.95,
+                   align = "v")
+# save figure
+ggsave(filename='./figures/figure_delta.png',width=20,height=5) 
+```
+
+# Shift functions
+
+## No clear differences
+```{r}
+Nb <- 200
+set.seed(4)
+sf <- shifthd_pbci(data = dfA, formula = obs ~ gr, q=seq(.1,.9,.1), nboot = Nb)
+
+# plot shift function
+psf_deciles <- plot_sf(sf, plot_theme = 2, symb_size = 3)[[1]] +
+  scale_y_continuous(breaks = seq(-140, 40, 20)) +
+  coord_cartesian(ylim = c(-130, 30)) +
+  theme(axis.title = element_text(size = 16, face = "bold"), 
+        axis.text = element_text(size = 16),
+        plot.title = element_text(face = "bold", size = 20)) +
+  labs(title = "No clear differences") 
+psf_deciles
+psfA <- psf_deciles
+```
+
+## Increasing differences
+```{r}
+Nb <- 200
+set.seed(4)
+sf <- shifthd_pbci(data = dfB, formula = obs ~ gr, q=seq(.1,.9,.1), nboot = Nb)
+
+# plot shift function
+psf_deciles <- plot_sf(sf, plot_theme = 2, symb_size = 3)[[1]] +
+  scale_y_continuous(breaks = seq(-140, 40, 20)) +
+  coord_cartesian(ylim = c(-130, 30)) +
+  theme(axis.title = element_text(size = 16, face = "bold"), 
+        axis.text = element_text(size = 16),
+        plot.title = element_text(face = "bold", size = 20)) +
+  labs(title = "Increasing differences") 
+psf_deciles
+psfB <- psf_deciles
+```
+
+## Complete shift
+```{r}
+Nb <- 200
+set.seed(4)
+sf <- shifthd_pbci(data = dfC, formula = obs ~ gr, q=seq(.1,.9,.1), nboot = Nb)
+
+# plot shift function
+psf_deciles <- plot_sf(sf, plot_theme = 2, symb_size = 3)[[1]] +
+  scale_y_continuous(breaks = seq(-140, 40, 20)) +
+  coord_cartesian(ylim = c(-130, 30)) +
+  theme(axis.title = element_text(size = 16, face = "bold"), 
+        axis.text = element_text(size = 16),
+        plot.title = element_text(face = "bold", size = 20)) +
+  labs(title = "Complete shift") 
+psf_deciles
+psfC <- psf_deciles
+```
+
+## Early differences
+```{r}
+Nb <- 200
+set.seed(4)
+sf <- shifthd_pbci(data = dfD, formula = obs ~ gr, q=seq(.1,.9,.1), nboot = Nb)
+
+# plot shift function
+psf_deciles <- plot_sf(sf, plot_theme = 2, symb_size = 3)[[1]] +
+  scale_y_continuous(breaks = seq(-140, 40, 20)) +
+  coord_cartesian(ylim = c(-130, 30)) +
+  theme(axis.title = element_text(size = 16, face = "bold"), 
+        axis.text = element_text(size = 16),
+        plot.title = element_text(face = "bold", size = 20)) +
+  labs(title = "Early differences") 
+psf_deciles
+psfD <- psf_deciles
+```
+
+## Summary figure
+```{r eval=FALSE}
+cowplot::plot_grid(psfA, psfB, psfC, psfD,
+                   labels=c("", "", "", ""), 
+                   ncol = 4, 
+                   nrow = 1,
+                   rel_heights = c(1, 1, 1, 1), 
+                   label_size = 20, 
+                   hjust = -0.8, 
+                   scale=.95,
+                   align = "v")
+# save figure
+ggsave(filename='./figures/figure_shift.png',width=20,height=5) 
+```
+
+# References
+
+Balota, D.A. & Yap, M.J. (2011) Moving Beyond the Mean in Studies of Mental Chronometry: The Power of Response Time Distributional Analyses. Curr Dir Psychol Sci, 20, 160-166.
+
+Balota, D.A., Yap, M.J., Cortese, M.J. & Watson, J.M. (2008) Beyond mean response latency: Response time distributional analyses of semantic priming. J Mem Lang, 59, 495-523.
+
+Clarke, E. & Sherrill-Mix, S. (2016) ggbeeswarm: Categorical Scatter (Violin Point) Plots.
+
+De Jong, R., Liang, C.C. & Lauber, E. (1994) Conditional and Unconditional Automaticity - a Dual-Process Model of Effects of Spatial Stimulus - Response Correspondence. J Exp Psychol Human, 20, 731-750.
+
+Ellinghaus, R. & Miller, J. (2018) Delta plots with negative-going slopes as a potential marker of decreasing response activation in masked semantic priming. Psychol Res, 82, 590-599.
+
+Jiang, Y., Rouder, J.N. & Speckman, P.L. (2004) A note on the sampling properties of the Vincentizing (quantile averaging) procedure. J Math Psychol, 48, 186-195.
+
+Ratcliff, R. (1979) Group Reaction-Time Distributions and an Analysis of Distribution Statistics. Psychol Bull, 86, 446-461.
+
+Rousselet, G.A., Pernet, C.R. & Wilcox, R.R. (2017) Beyond differences in means: robust graphical methods to compare two groups in neuroscience. The European journal of neuroscience, 46, 1738-1748.
+
+Schwarz, W. & Miller, J. (2012) Response time models of delta plots with negative-going slopes. Psychon B Rev, 19, 555-574.
+
+
+
