@@ -1,0 +1,96 @@
+## Make t and p functions
+# functions work columwise
+ctval <- function(x, nullval=0){
+tval <- (apply(x, 2, mean)-nullval) / ( sqrt(apply(x, 2, var))/sqrt(nrow(x)) )
+tval
+}
+
+cpval <- function(tval, df){
+pval <- 2*(1-pt(abs(tval),df))
+pval
+}
+
+
+# Cluster correction
+## Bootstrap function
+bootfun <- function(data, nboot = 599){
+  Np <- nrow(data)
+  Ng <- ncol(data)
+  # centre data so null hypothesis is true
+  cdata <- data - matrix(rep(apply(data, 2, mean), Np), nrow = Np, byrow = TRUE)
+  # dependent data, so sample participants with replacement
+  bootsamples <- sample(Np, size = Np*nboot, replace = TRUE)
+  boot.tvals <- matrix(data = 0, nrow = nboot, ncol = Ng)
+  boot.pvals <- matrix(data = 0, nrow = nboot, ncol = Ng)
+  
+  for(G in 1:Ng){
+    bootdata <- matrix(cdata[bootsamples,G], nrow = Np)
+    # for each bootstrap:
+    boot.tvals[,G] <- ctval(bootdata)
+    boot.pvals[,G] <- cpval(boot.tvals[,G], df = Np-1)
+  }
+  list(tvals = boot.tvals, pvals = boot.pvals)
+}
+
+# for independent groups
+bootfun_ind <- function(data, nboot = 599){
+  Np <- nrow(data)
+  Ng <- ncol(data)
+  # centre data so null hypothesis is true
+  cdata <- data - matrix(rep(apply(data, 2, mean), Np), nrow = Np, byrow = TRUE)
+  boot.tvals <- matrix(data = 0, nrow = nboot, ncol = Ng)
+  boot.pvals <- matrix(data = 0, nrow = nboot, ncol = Ng)
+  
+  for(G in 1:Ng){
+    bootsamples <- sample(Np, size = Np*nboot, replace = TRUE)
+    bootdata <- matrix(cdata[bootsamples,G], nrow = Np)
+    # for each bootstrap:
+    boot.tvals[,G] <- ctval(bootdata)
+    boot.pvals[,G] <- cpval(boot.tvals[,G], df = Np-1)
+  }
+  list(tvals = boot.tvals, pvals = boot.pvals)
+}
+
+## Make cluster functions
+cluster.make <- function(x){
+  y <- rle(x)
+  cmap <- vector(mode = "numeric", length = 0)
+  nC <- length(y$values) # number of clusters
+  indx <- 0 # cluster counter
+  for(CL in 1:nC){
+    if(y$values[CL] == 0){
+      val <- 0
+    } else {
+      indx <- indx + 1
+      val <- indx
+    }
+    cmap <- c(cmap, rep(val, y$lengths[CL]))
+  }
+  cmap
+}
+
+# Save sum for each cluster
+cluster.sum <- function(values, cmap){
+  csum <- vector(mode = "numeric", length = max(cmap))
+  if(max(cmap)>0){
+    for(CL in 1:max(cmap)){
+      csum[CL] <- sum(values[cmap==CL])
+    }
+  } else {
+    csum <- 0
+  }
+  csum
+}
+
+# Cluster test
+cluster.test <- function(values, cmap, boot.th){
+    csig <- vector(mode = "logical", length = length(cmap))
+  if(max(cmap)>0){
+    for(CL in 1:max(cmap)){
+      csig[cmap==CL] <- sum(values[cmap==CL]) > boot.th
+    }
+  } else {
+    csig <- FALSE
+  }
+  csig
+}
