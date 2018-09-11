@@ -1,7 +1,7 @@
 Cluster correction for multiple dependent comparisons: simulations
 ================
 Guillaume A. Rousselet
-2018-09-06
+2018-09-11
 
 -   [Dependencies](#dependencies)
 -   [Simulation with 5 dependent groups](#simulation-with-5-dependent-groups)
@@ -136,7 +136,6 @@ for(sim in 1:nsim){
     cmap <- cluster.make(pvals<0.05)
     
     # bootstrap cluster sums
-    boot.tables <- bootfun(data)
     boot.cmap <- t(apply(boot.tables$pvals<0.05, 1, cluster.make))
     boot.max.sums <- vector(mode = "numeric", length = nrow(boot.cmap))
     for(B in 1:nrow(boot.tables$pvals)){
@@ -300,7 +299,6 @@ for(sim in 1:nsim){
       boot.tables <- bootfun(data)
 
       # bootstrap cluster sums
-      boot.tables <- bootfun(data)
       boot.cmap <- t(apply(boot.tables$pvals<0.05, 1, cluster.make))
       boot.max.sums <- vector(mode = "numeric", length = nrow(boot.cmap))
       for(B in 1:nrow(boot.tables$pvals)){
@@ -897,7 +895,6 @@ for(sim in 1:nsim){
     cmap <- cluster.make(pvals<0.05)
     
     # bootstrap cluster sums
-    boot.tables <- bootfun(data)
     boot.cmap <- t(apply(boot.tables$pvals<0.05, 1, cluster.make))
     boot.max.sums <- vector(mode = "numeric", length = nrow(boot.cmap))
     for(B in 1:nrow(boot.tables$pvals)){
@@ -1059,7 +1056,6 @@ for(sim in 1:nsim){
       boot.tables <- bootfun(data)
 
       # bootstrap cluster sums
-      boot.tables <- bootfun(data)
       boot.cmap <- t(apply(boot.tables$pvals<0.05, 1, cluster.make))
       boot.max.sums <- vector(mode = "numeric", length = nrow(boot.cmap))
       for(B in 1:nrow(boot.tables$pvals)){
@@ -1568,13 +1564,12 @@ for(sim in 1:nsim){
     # Cluster correction ==========================
     
     # Make bootstrap tables
-    boot.tables <- bootfun(data)
+    boot.tables <- bootfun_ind(data)
     
     # original clusters
     cmap <- cluster.make(pvals<0.05)
     
     # bootstrap cluster sums
-    boot.tables <- bootfun_ind(data)
     boot.cmap <- t(apply(boot.tables$pvals<0.05, 1, cluster.make))
     boot.max.sums <- vector(mode = "numeric", length = nrow(boot.cmap))
     for(B in 1:nrow(boot.tables$pvals)){
@@ -1737,10 +1732,9 @@ for(sim in 1:nsim){
       # Cluster correction ==========================
 
       # Make bootstrap tables
-      boot.tables <- bootfun(data)
+      boot.tables <- bootfun_ind(data)
 
       # bootstrap cluster sums
-      boot.tables <- bootfun_ind(data)
       boot.cmap <- t(apply(boot.tables$pvals<0.05, 1, cluster.make))
       boot.max.sums <- vector(mode = "numeric", length = nrow(boot.cmap))
       for(B in 1:nrow(boot.tables$pvals)){
