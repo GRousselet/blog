@@ -1,0 +1,89 @@
+#  Compute a 1-alpha confidence interval for the trimmed mean
+#  The default amount of trimming is tr=.2
+# adapted from Rand Wilcox's trimci function
+trimci <- function(x,tr=.2,alpha=.05){
+se <- sqrt(winvar(x,tr))/((1-2*tr)*sqrt(length(x)))
+ci <- vector(mode="numeric",length=2)
+df <- length(x)-2*floor(tr*length(x))-1
+ci[1] <- mean(x,tr)-qt(1-alpha/2,df)*se
+ci[2] <- mean(x,tr)+qt(1-alpha/2,df)*se
+ci
+}
+
+#  Compute the gamma Winsorized variance for the data in the vector x.
+#  tr is the amount of Winsorization which defaults to .2.
+# adapted from Rand Wilcox's winvar function
+winvar <- function(x,tr=.2){
+y<-sort(x)
+n<-length(x)
+ibot<-floor(tr*n)+1
+itop<-length(x)-ibot+1
+xbot<-y[ibot]
+xtop<-y[itop]
+y<-ifelse(y<=xbot,xbot,y)
+y<-ifelse(y>=xtop,xtop,y)
+wv<-var(y)
+wv
+}
+
+# adapted from Rand Wilcox's trimci function
+trimtval <- function(x,tr=.2,null.value=0){
+se <- sqrt(winvar(x,tr))/((1-2*tr)*sqrt(length(x)))
+df <- length(x)-2*floor(tr*length(x))-1
+tval <- (mean(x,tr)-null.value)/se
+tval
+}
+
+# adapted from Rand Wilcox's trimci function
+trimpval <- function(x,tr=.2,null.value=0){
+se <- sqrt(winvar(x,tr))/((1-2*tr)*sqrt(length(x)))
+df <- length(x)-2*floor(tr*length(x))-1
+test <- (mean(x,tr)-null.value)/se
+pval <- 2*(1-pt(abs(test),df))
+pval
+}
+
+## Make cluster functions
+cluster.make <- function(x){
+  y <- rle(x)
+  cmap <- vector(mode = "numeric", length = 0)
+  nC <- length(y$values) # number of clusters
+  indx <- 0 # cluster counter
+  for(CL in 1:nC){
+    if(y$values[CL] == 0){
+      val <- 0
+    } else {
+      indx <- indx + 1
+      val <- indx
+    }
+    cmap <- c(cmap, rep(val, y$lengths[CL]))
+  }
+  cmap
+}
+
+# Save sum for each cluster
+cluster.sum <- function(values, cmap){
+  csum <- vector(mode = "numeric", length = max(cmap))
+  if(max(cmap)>0){
+    for(CL in 1:max(cmap)){
+      csum[CL] <- sum(values[cmap==CL])
+    }
+  } else {
+    csum <- 0
+  }
+  csum
+}
+
+# Cluster test
+cluster.test <- function(values, cmap, boot.th){
+    csig <- vector(mode = "logical", length = length(cmap))
+  if(max(cmap)>0){
+    for(CL in 1:max(cmap)){
+      csig[cmap==CL] <- sum(values[cmap==CL]) > boot.th
+    }
+  } else {
+    csig <- FALSE
+  }
+  csig
+}
+
