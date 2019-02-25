@@ -1,7 +1,7 @@
 Hierarchical shift function: demo
 ================
 Guillaume A. Rousselet
-2019-02-21
+2019-02-25
 
 -   [Dependencies](#dependencies)
 -   [Example 1: same number of trials in each group, uniform shift](#example-1-same-number-of-trials-in-each-group-uniform-shift)
@@ -77,7 +77,7 @@ sessionInfo()
     ## 
     ## other attached packages:
     ##  [1] retimes_0.1-2   tidybayes_1.0.3 cowplot_0.9.4   forcats_0.3.0  
-    ##  [5] stringr_1.4.0   dplyr_0.8.0.1   purrr_0.3.0     readr_1.3.1    
+    ##  [5] stringr_1.4.0   dplyr_0.7.8     purrr_0.3.0     readr_1.3.1    
     ##  [9] tidyr_0.8.2     tibble_2.0.1    tidyverse_1.2.1 rogme_0.2.0    
     ## [13] ggplot2_3.1.0  
     ## 
@@ -88,26 +88,27 @@ sessionInfo()
     ##  [7] generics_0.0.2            htmltools_0.3.6          
     ##  [9] yaml_2.2.0                rlang_0.3.1              
     ## [11] pillar_1.3.1              glue_1.3.0               
-    ## [13] withr_2.1.2               modelr_0.1.2             
-    ## [15] readxl_1.2.0              plyr_1.8.4               
-    ## [17] munsell_0.5.0             gtable_0.2.0             
-    ## [19] cellranger_1.1.0          rvest_0.3.2              
-    ## [21] coda_0.19-2               evaluate_0.12            
-    ## [23] knitr_1.21                broom_0.5.1              
-    ## [25] Rcpp_1.0.0                arrayhelpers_1.0-20160527
-    ## [27] scales_1.0.0              backports_1.1.3          
-    ## [29] jsonlite_1.6              svUnit_0.7-12            
-    ## [31] hms_0.4.2                 digest_0.6.18            
-    ## [33] stringi_1.3.1             grid_3.5.2               
-    ## [35] cli_1.0.1                 tools_3.5.2              
-    ## [37] magrittr_1.5              lazyeval_0.2.1           
-    ## [39] crayon_1.3.4              pkgconfig_2.0.2          
-    ## [41] MASS_7.3-51.1             xml2_1.2.0               
-    ## [43] ggridges_0.5.1            lubridate_1.7.4          
-    ## [45] assertthat_0.2.0          rmarkdown_1.11           
-    ## [47] httr_1.4.0                rstudioapi_0.9.0         
-    ## [49] R6_2.4.0                  nlme_3.1-137             
-    ## [51] compiler_3.5.2
+    ## [13] withr_2.1.2               modelr_0.1.3             
+    ## [15] readxl_1.2.0              bindrcpp_0.2.2           
+    ## [17] bindr_0.1.1               plyr_1.8.4               
+    ## [19] munsell_0.5.0             gtable_0.2.0             
+    ## [21] cellranger_1.1.0          rvest_0.3.2              
+    ## [23] coda_0.19-2               evaluate_0.13            
+    ## [25] knitr_1.21                broom_0.5.1              
+    ## [27] Rcpp_1.0.0                arrayhelpers_1.0-20160527
+    ## [29] scales_1.0.0              backports_1.1.3          
+    ## [31] jsonlite_1.6              svUnit_0.7-12            
+    ## [33] hms_0.4.2                 digest_0.6.18            
+    ## [35] stringi_1.2.4             grid_3.5.2               
+    ## [37] cli_1.0.1                 tools_3.5.2              
+    ## [39] magrittr_1.5              lazyeval_0.2.1           
+    ## [41] crayon_1.3.4              pkgconfig_2.0.2          
+    ## [43] MASS_7.3-51.1             xml2_1.2.0               
+    ## [45] ggridges_0.5.1            lubridate_1.7.4          
+    ## [47] assertthat_0.2.0          rmarkdown_1.11           
+    ## [49] httr_1.4.0                rstudioapi_0.9.0         
+    ## [51] R6_2.3.0                  nlme_3.1-137             
+    ## [53] compiler_3.5.2
 
 We consider different situations in a hierarchical setting: varying numbers of trials are sampled from an ex-Gaussian distribution in 2 conditions, in varying numbers of participants. These simulations assume no between-participant variability. A more realistic situation is considered in [Rousselet & Wilcox (2019)](https://psyarxiv.com/3y54r/). There are a variety of approaches available to quantify distribution differences. In Rousselet & Wilcox (2019), we conclude that no method dominates: different methods better handle different situations. Crucially, neither the mean nor the median are sufficient or even necessary to compare distributions. Better tools are available; in particular, considering multiple quantiles of the distributions allow us to get a deeper understanding of how distributions differ.
 
@@ -312,7 +313,7 @@ P values
 --------
 
 ``` r
-yuen_pval <- apply(qdiff, 2, trimpval, tr = tr, null.value=0) # 2 x 9
+yuen_pval <- apply(qdiff, 2, trimpval, tr = tr, null.value=0)
 yuen_pval
 ```
 
@@ -660,7 +661,7 @@ P values
 --------
 
 ``` r
-yuen_pval <- apply(qdiff, 2, trimpval, tr = tr, null.value=0) # 2 x 9
+yuen_pval <- apply(qdiff, 2, trimpval, tr = tr, null.value=0)
 yuen_pval
 ```
 
@@ -948,7 +949,7 @@ P values
 --------
 
 ``` r
-yuen_pval <- apply(qdiff, 2, trimpval, tr = tr, null.value=0) # 2 x 9
+yuen_pval <- apply(qdiff, 2, trimpval, tr = tr, null.value=0) 
 yuen_pval
 ```
 
@@ -1231,7 +1232,7 @@ P values
 --------
 
 ``` r
-yuen_pval <- apply(qdiff, 2, trimpval, tr = tr, null.value=0) # 2 x 9
+yuen_pval <- apply(qdiff, 2, trimpval, tr = tr, null.value=0) 
 yuen_pval
 ```
 
