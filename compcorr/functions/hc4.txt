@@ -1,0 +1,170 @@
+# HC4 method to compare two independent Pearson's correlations
+
+twohc4cor<-function(x1,y1,x2,y2,alpha=.05){
+#
+#   Compare two independent Pearson correlations using the HC4 method
+#
+#
+X<-elimna(cbind(x1,y1))
+x1<-X[,1]
+y1<-X[,2]
+X<-elimna(cbind(x2,y2))
+x2<-X[,1]
+y2<-X[,2]
+x1=(x1-mean(x1))/sd(x1)
+y1=(y1-mean(y1))/sd(y1)
+x2=(x2-mean(x2))/sd(x2)
+y2=(y2-mean(y2))/sd(y2)
+temp1=olshc4(x1,y1)
+temp2=olshc4(x2,y2)
+test=(temp1$ci[2,2]-temp2$ci[2,2])/sqrt(temp1$ci[2,6]^2+temp2$ci[2,6]^2)
+df=length(x1)+length(x2)-4
+pv=2*(1-pt(abs(test),df))
+pv
+}
+
+elimna<-function(m){
+#
+# remove any rows of data having missing values
+#
+DONE=FALSE
+if(is.list(m) && is.matrix(m)){
+z=pool.a.list(m)
+m=matrix(z,ncol=ncol(m))
+DONE=TRUE
+}
+if(!DONE){
+if(is.list(m) && is.matrix(m[[1]])){
+for(j in 1:length(m))m[[j]]=na.omit(m[[j]])
+e=m
+DONE=TRUE
+}}
+if(!DONE){
+if(is.list(m) && is.null(dim(m))){ #!is.matrix(m))
+for(j in 1:length(m))m[[j]]=as.vector(na.omit(m[[j]]))
+e=m
+DONE=TRUE
+}}
+if(!DONE){
+#if(!is.list(m)){
+#if(is.null(dim(m)))
+m<-as.matrix(m)
+ikeep<-c(1:nrow(m))
+for(i in 1:nrow(m))if(sum(is.na(m[i,])>=1))ikeep[i]<-0
+e<-m[ikeep[ikeep>=1],]
+#}
+}
+e
+}
+
+olshc4<-function(x,y,alpha=.05,CN=FALSE,
+xout=FALSE,outfun=outpro,HC3=FALSE,plotit=FALSE,xlab = "X", ylab = "Y", zlab = "Z",...){
+#
+# Compute confidence intervals via least squares
+# regression using heteroscedastic method
+# recommended by Cribari-Neto (2004).
+# CN=F, degrees of freedom are n-p
+# CN=T  degrees of freedom are infinite, as done by Cribari-Neto (2004)
+# All indications are that CN=F is best for general use.
+#
+#  HC3=TRUE, will replace the HC4 estimator with the HC3 estimator.
+#
+x<-as.matrix(x)
+pnum=ncol(x)
+if(nrow(x) != length(y))stop("Length of y does not match number of x values")
+m<-cbind(x,y)
+m<-elimna(m)
+y<-m[,ncol(x)+1]
+x=m[,1:ncol(x)]
+n=length(y)
+nrem=n
+n.keep=length(y)
+x<-as.matrix(x)
+if(xout){
+flag<-outfun(x,plotit=FALSE,...)$keep
+x<-as.matrix(x)
+x<-x[flag,]
+y<-y[flag]
+n.keep=length(y)
+x<-as.matrix(x)
+}
+temp<-lsfit(x,y)
+x<-cbind(rep(1,nrow(x)),x)
+xtx<-solve(t(x)%*%x)
+h<-diag(x%*%xtx%*%t(x))
+n<-length(h)
+d<-(n*h)/sum(h)
+for(i in 1:length(d)){
+        d[i]<-min(4, d[i])
+}
+if(HC3)d=2
+hc4<-xtx%*%t(x)%*%diag(temp$res^2/(1-h)^d)%*%x%*%xtx
+df<-nrow(x)-ncol(x)
+crit<-qt(1-alpha/2,df)
+if(CN)crit=qnorm(1-alpha/2)
+al<-ncol(x)
+p=al-1
+ci<-matrix(NA,nrow=al,ncol=6)
+lab.out=rep("Slope",p)
+dimnames(ci)<-list(c("(Intercept)",lab.out),c("Coef.","Estimates",
+"ci.lower","ci.upper","p-value","Std.Error"))
+for(j in 1:al){
+ci[j,1]<-j-1
+ci[j,2]<-temp$coef[j]
+ci[j,3]<-temp$coef[j]-crit*sqrt(hc4[j,j])
+ci[j,4]<-temp$coef[j]+crit*sqrt(hc4[j,j])
+test<-temp$coef[j]/sqrt(hc4[j,j])
+ci[j,5]<-2*(1-pt(abs(test),df))
+if(CN)ci[j,5]<-2*(1-pnorm(abs(test),df))
+}
+ci[,6]=sqrt(diag(hc4))
+if(plotit){
+if(pnum==1){
+plot(x[,-1],y,xlab=xlab,ylab=ylab)
+abline(ci[,2])
+}
+if(pnum==2){
+regp2plot(x[,-1],y,regfun=ols,xlab=xlab,ylab=ylab,zlab=zlab)
+}}
+list(n=nrem,n.keep=n.keep,ci=ci, cov=hc4)
+}
+
+# Bootstrap-t method coupled with HC4
+tworhobt<-function(X1,Y1,X2,Y2,alpha=.05,nboot=499){
+#
+#
+r1=cor(X1,Y1)
+r2=cor(X2,Y2)
+n1=length(X1)
+n2=length(X2)
+v=NA
+Nboot=nboot+1
+for(i in 1:Nboot){
+if(i<=nboot){
+id1=sample(n1,n1,replace=TRUE)
+id2=sample(n2,n2,replace=TRUE)
+}
+if(i==Nboot){
+id1=c(1:n1)
+id2=c(1:n2)
+}
+x1=X1[id1]
+y1=Y1[id1]
+x2=X2[id2]
+y2=Y2[id2]
+x1=(x1-mean(x1))/sd(x1)
+y1=(y1-mean(y1))/sd(y1)
+x2=(x2-mean(x2))/sd(x2)
+y2=(y2-mean(y2))/sd(y2)
+temp1=olshc4(x1,y1)
+temp2=olshc4(x2,y2)
+if(i<=nboot)v[i]=(temp1$ci[2,2]-r1-temp2$ci[2,2]+r2)/sqrt(temp1$ci[2,6]^2+temp2$ci[2,6]^2)
+if(i==Nboot)v[i]=(temp1$ci[2,2]-temp2$ci[2,2])/sqrt(temp1$ci[2,6]^2+temp2$ci[2,6]^2)
+}
+ibot<-round(alpha*nboot/2)
+itop<-nboot-ibot
+vs=sort(v[1:nboot])
+crit=c(vs[ibot],vs[itop])
+test=v[Nboot]
+list(test=test,crit.val=crit)
+}

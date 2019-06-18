@@ -1,0 +1,1270 @@
+---
+title: "Compare independent correlations"
+author: "Guillaume A. Rousselet"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    fig_caption: no
+    number_sections: no
+    toc: yes
+    toc_depth: 2
+---
+
+# Dependencies
+```{r}
+library(ggplot2)
+library(tibble)
+library(beepr)
+source("./functions/theme_gar.txt")
+## HC4 method to compare two independent Pearson's correlations
+source("./functions/hc4.txt")
+## g & h multivariate distributions
+source("./functions/ghmult.txt")
+## bootstrap + core corr functions
+source("./functions/corfun.txt")
+```
+
+## Define plot functions
+```{r}
+mdf <- function(pres, nseq, rhoseq){
+  nr <- length(rhoseq)
+  df <- tibble(power = as.vector(pres),
+             n = rep(nseq, each = nr),
+             rho = factor(rep(rhoseq, length(nseq))))
+df
+}
+
+plot.res.fp <- function(df, 
+                        ylim = c(0, 0.1),
+                        ybreaks = seq(0, 1, 0.025)){
+  ggplot(df, aes(x = n, y = power, colour = rho)) + theme_gar +
+  scale_colour_viridis_d(end = 0.95) +
+  geom_hline(yintercept = 0.05) +
+  geom_line(size = 1) +
+  scale_y_continuous(breaks = ybreaks) +
+  coord_cartesian(ylim = ylim) +  
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  labs(x = "Sample size", 
+       y = "Prop. false positives")  
+}
+
+plot.res.tp <- function(df){
+  ggplot(df, aes(x = n, y = power, colour = rho)) + theme_gar +
+  scale_colour_viridis_d(end = 0.95) +
+  geom_line(size = 1) +
+  scale_y_continuous(breaks = seq(0, 1, 0.1)) +
+  coord_cartesian(ylim = c(0, 1)) +  
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  labs(x = "Sample size",
+       y = "Prop. true positives")  
+}
+```
+
+# 0 difference, vary rho
+
+## g=0, h=0
+```{r, eval = FALSE}
+set.seed(21)
+rhoseq <- seq(0, 0.8, 0.1)
+nseq <- seq(50, 500, 50)
+nmax <- max(nseq)
+nr <- length(rhoseq)
+nsim <- 4000
+es <- 0 # effect size
+g <- 0
+h <- 0
+res.spear <- array(0, dim = c(nsim, nr, length(nseq)))
+res.pears.boot <- array(0, dim = c(nsim, nr, length(nseq)))
+res.pears.fish <- array(0, dim = c(nsim, nr, length(nseq)))
+res.pears.hc4 <- array(0, dim = c(nsim, nr, length(nseq)))
+
+for(R in 1:nr){
+  beep(2)
+  rho <- rhoseq[R]
+  print(paste("sim rho =",rho))
+  cmat1 <- matrix(c(1,rho,rho,1),2,2)
+  cmat2 <- matrix(c(1,rho+es,rho+es,1),2,2)
+  for(S in 1:nsim){
+    # generate max n sample
+    out1 <- ghmul(nmax, g=g, h=h, p=2, cmat=cmat1)  
+    out2 <- ghmul(nmax, g=g, h=h, p=2, cmat=cmat2) 
+    for(N in 1:length(nseq)){
+      # subsample from max n sample
+      res <- twocor.all(out1[1:nseq[N],1],out1[1:nseq[N],2],out2[1:nseq[N],1],out2[1:nseq[N],2])
+      res.spear[S, R, N] <- res$sig.boot.spear
+      res.pears.boot[S, R, N] <- res$sig.boot.pears
+      res.pears.fish[S, R, N] <- res$sig.fisher.pears
+      res.pears.hc4[S, R, N] <- res$sig.hc4.pears
+    }
+  }
+}
+
+beep(8)
+save(res.spear, res.pears.boot, res.pears.fish, res.pears.hc4,
+     rhoseq, nseq, nsim, es, g, h,
+     file = "./data/diff00_g0h0_varyrho.RData")
+```
+
+### Results
+
+#### Spearman + bootstrap
+```{r}
+load("./data/diff00_g0h0_varyrho.RData")
+
+pres <- apply(res.spear, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.fp(df, ylim = c(0, 0.2))
+pA <- p + ggtitle("Spearman + bootstrap")
+pA
+```
+
+#### Pearson + bootstrap
+```{r}
+pres <- apply(res.pears.boot, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.fp(df, ylim = c(0, 0.2))
+pB <- p + ggtitle("Pearson + bootstrap")
+pB
+```
+
+#### Pearson + Fisher
+```{r}
+pres <- apply(res.pears.fish, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.fp(df, ylim = c(0, 0.2))
+pC <- p + ggtitle("Pearson + Fisher")
+pC
+# ggsave("./figures/g0h0_rho0_fish.png", width = 15, height = 10, units = "cm")
+```
+
+#### Pearson + HC4
+```{r}
+pres <- apply(res.pears.hc4, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.fp(df, ylim = c(0, 0.2))
+pD <- p + ggtitle("Pearson + HC4")
+pD
+```
+
+#### Combine panels
+
+```{r, eval = FALSE}
+cowplot::plot_grid(pA, pB, pC, pD,
+                   labels = c("A", "B", "C", "D"))
+ggsave("./figures/diff00_g0h0_varyrho_summary.pdf", width = 30, height = 20, units = "cm")
+```
+
+## g=0, h=0.2
+```{r, eval = FALSE}
+set.seed(21)
+rhoseq <- seq(0, 0.8, 0.1)
+nseq <- seq(50, 500, 50)
+nr <- length(rhoseq)
+nsim <- 4000
+es <- 0 # effect size
+g <- 0
+h <- 0.2
+res.spear <- array(0, dim = c(nsim, nr, length(nseq)))
+res.pears.boot <- array(0, dim = c(nsim, nr, length(nseq)))
+res.pears.fish <- array(0, dim = c(nsim, nr, length(nseq)))
+res.pears.hc4 <- array(0, dim = c(nsim, nr, length(nseq)))
+
+for(R in 1:nr){
+  beep(2)
+  rho <- rhoseq[R]
+  print(paste("sim rho =",rho))
+  cmat1 <- matrix(c(1,rho,rho,1),2,2)
+  cmat2 <- matrix(c(1,rho+es,rho+es,1),2,2)
+  for(N in 1:length(nseq)){
+    n <- nseq[N]
+    for(S in 1:nsim){
+      out1 <- ghmul(n, g=g, h=h, p=2, cmat=cmat1)  
+      out2 <- ghmul(n, g=g, h=h, p=2, cmat=cmat2)  
+      res <- twocor.all(out1[,1],out1[,2],out2[,1],out2[,2])
+      res.spear[S, R, N] <- res$sig.boot.spear
+      res.pears.boot[S, R, N] <- res$sig.boot.pears
+      res.pears.fish[S, R, N] <- res$sig.fisher.pears
+      res.pears.hc4[S, R, N] <- res$sig.hc4.pears
+    }
+  }
+}
+
+beep(8)
+save(res.spear, res.pears.boot, res.pears.fish, res.pears.hc4,
+     rhoseq, nseq, nsim, es, g, h,
+     file = "./data/diff00_g0h02_varyrho.RData")
+```
+
+### Results
+
+#### Spearman + bootstrap
+```{r}
+load("./data/diff00_g0h02_varyrho.RData")
+
+pres <- apply(res.spear, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.fp(df, ylim = c(0, 0.2))
+pA <- p + ggtitle("Spearman + bootstrap")
+pA
+
+# ggsave("./figures/g0h02_rho0_spea.png", width = 15, height = 10, units = "cm")
+```
+
+#### Pearson + bootstrap
+```{r}
+pres <- apply(res.pears.boot, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.fp(df, ylim = c(0, 0.2))
+pB <- p + ggtitle("Pearson + bootstrap")
+pB
+
+# ggsave("./figures/g0h02_rho0_boot.png", width = 15, height = 10, units = "cm")
+```
+
+#### Pearson + Fisher
+```{r}
+pres <- apply(res.pears.fish, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.fp(df, ylim = c(0, 0.2))
+pC <- p + ggtitle("Pearson + Fisher")
+pC
+# ggsave("./figures/g0h02_rho0_fish.png", width = 15, height = 10, units = "cm")
+```
+
+#### Pearson + HC4
+```{r}
+pres <- apply(res.pears.hc4, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.fp(df, ylim = c(0, 0.2))
+pD <- p + ggtitle("Pearson + HC4")
+pD
+```
+
+#### Combine panels
+
+```{r, eval = FALSE}
+cowplot::plot_grid(pA, pB, pC, pD,
+                   labels = c("A", "B", "C", "D"))
+ggsave("./figures/diff00_g0h02_varyrho_summary.pdf", width = 30, height = 20, units = "cm")
+```
+
+## g=0.2, h=0
+```{r, eval = FALSE}
+set.seed(21)
+rhoseq <- seq(0, 0.8, 0.1)
+nseq <- seq(50, 500, 50)
+nr <- length(rhoseq)
+nsim <- 4000
+es <- 0 # effect size
+g <- 0.2
+h <- 0
+res.spear <- array(0, dim = c(nsim, nr, length(nseq)))
+res.pears.boot <- array(0, dim = c(nsim, nr, length(nseq)))
+res.pears.fish <- array(0, dim = c(nsim, nr, length(nseq)))
+res.pears.hc4 <- array(0, dim = c(nsim, nr, length(nseq)))
+
+for(R in 1:nr){
+  beep(2)
+  rho <- rhoseq[R]
+  print(paste("sim rho =",rho))
+  cmat1 <- matrix(c(1,rho,rho,1),2,2)
+  cmat2 <- matrix(c(1,rho+es,rho+es,1),2,2)
+  for(N in 1:length(nseq)){
+    n <- nseq[N]
+    for(S in 1:nsim){
+      out1 <- ghmul(n, g=g, h=h, p=2, cmat=cmat1)  
+      out2 <- ghmul(n, g=g, h=h, p=2, cmat=cmat2)  
+      res <- twocor.all(out1[,1],out1[,2],out2[,1],out2[,2])
+      res.spear[S, R, N] <- res$sig.boot.spear
+      res.pears.boot[S, R, N] <- res$sig.boot.pears
+      res.pears.fish[S, R, N] <- res$sig.fisher.pears
+      res.pears.hc4[S, R, N] <- res$sig.hc4.pears
+    }
+  }
+}
+
+beep(8)
+save(res.spear, res.pears.boot, res.pears.fish, res.pears.hc4,
+     rhoseq, nseq, nsim, es, g, h,
+     file = "./data/diff00_g02h0_varyrho.RData")
+```
+
+### Results
+
+#### Spearman + bootstrap
+```{r}
+load("./data/diff00_g02h0_varyrho.RData")
+
+pres <- apply(res.spear, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.fp(df)
+pA <- p + ggtitle("Spearman + bootstrap")
+pA
+# ggsave("./figures/g02h0_rho0_spea.png", width = 15, height = 10, units = "cm")
+```
+
+#### Pearson + bootstrap
+```{r}
+pres <- apply(res.pears.boot, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.fp(df)
+pB <- p + ggtitle("Pearson + bootstrap")
+pB
+# ggsave("./figures/g02h0_rho0_boot.png", width = 15, height = 10, units = "cm")
+```
+
+#### Pearson + Fisher
+```{r}
+pres <- apply(res.pears.fish, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.fp(df)
+pC <- p + ggtitle("Pearson + Fisher")
+pC
+# ggsave("./figures/g02h0_rho0_fish.png", width = 15, height = 10, units = "cm")
+```
+
+#### Pearson + HC4
+```{r}
+pres <- apply(res.pears.hc4, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.fp(df)
+pD <- p + ggtitle("Pearson + HC4")
+pD
+```
+
+#### Combine panels
+
+```{r, eval = FALSE}
+cowplot::plot_grid(pA, pB, pC, pD,
+                   labels = c("A", "B", "C", "D"))
+ggsave("./figures/diff00_g02h0_varyrho_summary.pdf", width = 30, height = 20, units = "cm")
+```
+
+## g=0.2, h=0.2
+```{r, eval = FALSE}
+set.seed(21)
+rhoseq <- seq(0, 0.8, 0.1)
+nseq <- seq(50, 500, 50)
+nr <- length(rhoseq)
+nsim <- 4000
+es <- 0 # effect size
+g <- 0.2
+h <- 0.2
+res.spear <- array(0, dim = c(nsim, nr, length(nseq)))
+res.pears.boot <- array(0, dim = c(nsim, nr, length(nseq)))
+res.pears.fish <- array(0, dim = c(nsim, nr, length(nseq)))
+res.pears.hc4 <- array(0, dim = c(nsim, nr, length(nseq)))
+
+for(R in 1:nr){
+  beep(2)
+  rho <- rhoseq[R]
+  print(paste("sim rho =",rho))
+  cmat1 <- matrix(c(1,rho,rho,1),2,2)
+  cmat2 <- matrix(c(1,rho+es,rho+es,1),2,2)
+  for(N in 1:length(nseq)){
+    n <- nseq[N]
+    for(S in 1:nsim){
+      out1 <- ghmul(n, g=g, h=h, p=2, cmat=cmat1)  
+      out2 <- ghmul(n, g=g, h=h, p=2, cmat=cmat2)  
+      res <- twocor.all(out1[,1],out1[,2],out2[,1],out2[,2])
+      res.spear[S, R, N] <- res$sig.boot.spear
+      res.pears.boot[S, R, N] <- res$sig.boot.pears
+      res.pears.fish[S, R, N] <- res$sig.fisher.pears
+      res.pears.hc4[S, R, N] <- res$sig.hc4.pears
+    }
+  }
+}
+
+beep(8)
+save(res.spear, res.pears.boot, res.pears.fish, res.pears.hc4,
+     rhoseq, nseq, nsim, es, g, h,
+     file = "./data/diff00_g02h02_varyrho.RData")
+```
+
+### Results
+
+#### Spearman + bootstrap
+```{r}
+load("./data/diff00_g02h02_varyrho.RData")
+
+pres <- apply(res.spear, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.fp(df, ylim = c(0, 0.3), ybreaks = seq(0, 0.3, 0.05))
+pA <- p + ggtitle("Spearman + bootstrap")
+pA
+# ggsave("./figures/g02h02_rho0_spea.png", width = 15, height = 10, units = "cm")
+```
+
+#### Pearson + bootstrap
+```{r}
+pres <- apply(res.pears.boot, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.fp(df, ylim = c(0, 0.3), ybreaks = seq(0, 0.3, 0.05))
+pB <- p + ggtitle("Pearson + bootstrap")
+pB
+# ggsave("./figures/g02h02_rho0_boot.png", width = 15, height = 10, units = "cm")
+```
+
+#### Pearson + Fisher
+```{r}
+pres <- apply(res.pears.fish, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.fp(df, ylim = c(0, 0.3), ybreaks = seq(0, 0.3, 0.05))
+pC <- p + ggtitle("Pearson + Fisher")
+pC
+# ggsave("./figures/g02h02_rho0_fish.png", width = 15, height = 10, units = "cm")
+```
+
+#### Pearson + HC4
+```{r}
+pres <- apply(res.pears.hc4, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.fp(df, ylim = c(0, 0.3), ybreaks = seq(0, 0.3, 0.05))
+pD <- p + ggtitle("Pearson + HC4")
+pD
+```
+
+#### Combine panels
+
+```{r, eval = FALSE}
+cowplot::plot_grid(pA, pB, pC, pD,
+                   labels = c("A", "B", "C", "D"))
+ggsave("./figures/diff00_g02h02_varyrho_summary.pdf", width = 30, height = 20, units = "cm")
+```
+
+## g=1, h=0
+```{r, eval = FALSE}
+set.seed(21)
+rhoseq <- seq(0, 0.8, 0.1)
+nseq <- seq(50, 500, 50)
+nmax <- max(nseq)
+nr <- length(rhoseq)
+nsim <- 4000
+es <- 0 # effect size
+g <- 1
+h <- 0
+res.spear <- array(0, dim = c(nsim, nr, length(nseq)))
+res.pears.boot <- array(0, dim = c(nsim, nr, length(nseq)))
+res.pears.fish <- array(0, dim = c(nsim, nr, length(nseq)))
+res.pears.hc4 <- array(0, dim = c(nsim, nr, length(nseq)))
+
+for(R in 1:nr){
+  beep(2)
+  rho <- rhoseq[R]
+  print(paste("sim rho =",rho))
+  cmat1 <- matrix(c(1,rho,rho,1),2,2)
+  cmat2 <- matrix(c(1,rho+es,rho+es,1),2,2)
+  for(S in 1:nsim){
+    # generate max n sample
+    out1 <- ghmul(nmax, g=g, h=h, p=2, cmat=cmat1)  
+    out2 <- ghmul(nmax, g=g, h=h, p=2, cmat=cmat2) 
+    for(N in 1:length(nseq)){
+      # subsample from max n sample
+      res <- twocor.all(out1[1:nseq[N],1],out1[1:nseq[N],2],out2[1:nseq[N],1],out2[1:nseq[N],2])
+      res.spear[S, R, N] <- res$sig.boot.spear
+      res.pears.boot[S, R, N] <- res$sig.boot.pears
+      res.pears.fish[S, R, N] <- res$sig.fisher.pears
+      res.pears.hc4[S, R, N] <- res$sig.hc4.pears
+    }
+  }
+}
+
+beep(8)
+save(res.spear, res.pears.boot, res.pears.fish, res.pears.hc4,
+     rhoseq, nseq, nsim, es, g, h,
+     file = "./data/diff00_g1h0_varyrho.RData")
+```
+
+### Results
+
+#### Spearman + bootstrap
+```{r}
+load("./data/diff00_g1h0_varyrho.RData")
+
+pres <- apply(res.spear, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.fp(df, ylim = c(0, 0.5), ybreaks = seq(0,0.5,0.1))
+pA <- p + ggtitle("Spearman + bootstrap")
+pA
+# ggsave("./figures/g1h0_rho0_spea.png", width = 15, height = 10, units = "cm")
+```
+
+#### Pearson + bootstrap
+```{r}
+pres <- apply(res.pears.boot, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.fp(df, ylim = c(0, 0.5), ybreaks = seq(0,0.5,0.1))
+pB <- p + ggtitle("Pearson + bootstrap")
+pB
+# ggsave("./figures/g1h0_rho0_boot.png", width = 15, height = 10, units = "cm")
+```
+
+#### Pearson + Fisher
+```{r}
+pres <- apply(res.pears.fish, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.fp(df, ylim = c(0, 0.5), ybreaks = seq(0,0.5,0.1))
+pC <- p + ggtitle("Pearson + Fisher")
+pC
+# ggsave("./figures/g1h0_rho0_fish.png", width = 15, height = 10, units = "cm")
+```
+
+#### Pearson + HC4
+```{r}
+pres <- apply(res.pears.hc4, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.fp(df, ylim = c(0, 0.5), ybreaks = seq(0,0.5,0.1))
+pD <- p + ggtitle("Pearson + HC4")
+pD
+```
+
+#### Combine panels
+
+```{r, eval = FALSE}
+cowplot::plot_grid(pA, pB, pC, pD,
+                   labels = c("A", "B", "C", "D"))
+ggsave("./figures/diff00_g1h0_varyrho_summary.pdf", width = 30, height = 20, units = "cm")
+```
+
+# 0.1 difference, vary rho1
+
+## g=0, h=0
+
+```{r, eval = FALSE}
+set.seed(21)
+rhoseq <- seq(0, 0.8, 0.1)
+nseq <- seq(50, 500, 50)
+nr <- length(rhoseq)
+nsim <- 4000
+es <- 0.1 # effect size
+g <- 0
+h <- 0
+res.spear <- array(0, dim = c(nsim, nr, length(nseq)))
+res.pears.boot <- array(0, dim = c(nsim, nr, length(nseq)))
+res.pears.fish <- array(0, dim = c(nsim, nr, length(nseq)))
+res.pears.hc4 <- array(0, dim = c(nsim, nr, length(nseq)))
+
+for(R in 1:nr){
+  beep(2)
+  rho <- rhoseq[R]
+  print(paste("sim rho =",rho))
+  cmat1 <- matrix(c(1,rho,rho,1),2,2)
+  cmat2 <- matrix(c(1,rho+es,rho+es,1),2,2)
+  for(N in 1:length(nseq)){
+    n <- nseq[N]
+    for(S in 1:nsim){
+      out1 <- ghmul(n, g=g, h=h, p=2, cmat=cmat1)  
+      out2 <- ghmul(n, g=g, h=h, p=2, cmat=cmat2)  
+      res <- twocor.all(out1[,1],out1[,2],out2[,1],out2[,2])
+      res.spear[S, R, N] <- res$sig.boot.spear
+      res.pears.boot[S, R, N] <- res$sig.boot.pears
+      res.pears.fish[S, R, N] <- res$sig.fisher.pears
+      res.pears.hc4[S, R, N] <- res$sig.hc4.pears
+    }
+  }
+}
+
+beep(8)
+save(res.spear, res.pears.boot, res.pears.fish, res.pears.hc4,
+     rhoseq, nseq, nsim, es, g, h,
+     file = "./data/diff01_g0h0_varyrho1.RData")
+```
+
+### Results
+
+#### Spearman + bootstrap
+```{r}
+load("./data/diff01_g0h0_varyrho1.RData")
+
+pres <- apply(res.spear, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.tp(df)
+pA <- p + ggtitle("Spearman + bootstrap")
+pA
+```
+
+#### Pearson + bootstrap
+```{r}
+pres <- apply(res.pears.boot, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.tp(df)
+pB <- p + ggtitle("Pearson + bootstrap")
+pB
+```
+
+#### Pearson + Fisher
+```{r}
+pres <- apply(res.pears.fish, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.tp(df)
+pC <- p + ggtitle("Pearson + Fisher")
+pC
+# ggsave("./figures/diff01_g0h0_varyrho_fish.png", width = 15, height = 10, units = "cm")
+```
+
+#### Pearson + HC4
+```{r}
+pres <- apply(res.pears.hc4, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.tp(df)
+pD <- p + ggtitle("Pearson + HC4")
+pD
+```
+
+#### Combine panels
+
+```{r, eval = FALSE}
+cowplot::plot_grid(pA, pB, pC, pD,
+                   labels = c("A", "B", "C", "D"))
+ggsave("./figures/diff01_g0h0_varyrho1_summary.pdf", width = 30, height = 20, units = "cm")
+```
+
+## g=0, h=0.2
+```{r}
+set.seed(21)
+rhoseq <- seq(0, 0.8, 0.1)
+nseq <- seq(50, 500, 50)
+nr <- length(rhoseq)
+nsim <- 4000
+es <- 0.1 # effect size
+g <- 0
+h <- 0.2
+res.spear <- array(0, dim = c(nsim, nr, length(nseq)))
+res.pears.boot <- array(0, dim = c(nsim, nr, length(nseq)))
+res.pears.fish <- array(0, dim = c(nsim, nr, length(nseq)))
+res.pears.hc4 <- array(0, dim = c(nsim, nr, length(nseq)))
+
+for(R in 1:nr){
+  beep(2)
+  rho <- rhoseq[R]
+  print(paste("sim rho =",rho))
+  cmat1 <- matrix(c(1,rho,rho,1),2,2)
+  cmat2 <- matrix(c(1,rho+es,rho+es,1),2,2)
+  for(N in 1:length(nseq)){
+    n <- nseq[N]
+    for(S in 1:nsim){
+      out1 <- ghmul(n, g=g, h=h, p=2, cmat=cmat1)  
+      out2 <- ghmul(n, g=g, h=h, p=2, cmat=cmat2)  
+      res <- twocor.all(out1[,1],out1[,2],out2[,1],out2[,2])
+      res.spear[S, R, N] <- res$sig.boot.spear
+      res.pears.boot[S, R, N] <- res$sig.boot.pears
+      res.pears.fish[S, R, N] <- res$sig.fisher.pears
+      res.pears.hc4[S, R, N] <- res$sig.hc4.pears
+    }
+  }
+}
+
+beep(8)
+save(res.spear, res.pears.boot, res.pears.fish, res.pears.hc4,
+     rhoseq, nseq, nsim, es, g, h,
+     file = "./data/diff01_g0h02_varyrho1.RData")
+```
+
+### Results
+
+#### Spearman + bootstrap
+```{r, eval = FALSE}
+load("./data/diff01_g0h02_varyrho1.RData")
+
+pres <- apply(res.spear, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.tp(df)
+pA <- p + ggtitle("Spearman + bootstrap")
+pA
+```
+
+#### Pearson + bootstrap
+```{r}
+pres <- apply(res.pears.boot, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.tp(df)
+pB <- p + ggtitle("Pearson + bootstrap")
+pB
+```
+
+#### Pearson + Fisher
+```{r}
+pres <- apply(res.pears.fish, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.tp(df)
+pC <- p + ggtitle("Pearson + Fisher")
+pC
+# ggsave("./figures/diff01_g0h02_varyrho_fish.png", width = 15, height = 10, units = "cm")
+```
+
+#### Pearson + HC4
+```{r}
+pres <- apply(res.pears.hc4, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.tp(df)
+pD <- p + ggtitle("Pearson + HC4")
+pD
+```
+
+#### Combine panels
+
+```{r, eval = FALSE}
+cowplot::plot_grid(pA, pB, pC, pD,
+                   labels = c("A", "B", "C", "D"))
+ggsave("./figures/diff01_g0h02_varyrho1_summary.pdf", width = 30, height = 20, units = "cm")
+```
+
+## g=0.2, h=0
+```{r, eval = FALSE}
+set.seed(21)
+rhoseq <- seq(0, 0.8, 0.1)
+nseq <- seq(50, 500, 50)
+nr <- length(rhoseq)
+nsim <- 4000
+es <- 0.1 # effect size
+g <- 0.2
+h <- 0
+res.spear <- array(0, dim = c(nsim, nr, length(nseq)))
+res.pears.boot <- array(0, dim = c(nsim, nr, length(nseq)))
+res.pears.fish <- array(0, dim = c(nsim, nr, length(nseq)))
+res.pears.hc4 <- array(0, dim = c(nsim, nr, length(nseq)))
+
+for(R in 1:nr){
+  beep(2)
+  rho <- rhoseq[R]
+  print(paste("sim rho =",rho))
+  cmat1 <- matrix(c(1,rho,rho,1),2,2)
+  cmat2 <- matrix(c(1,rho+es,rho+es,1),2,2)
+  for(N in 1:length(nseq)){
+    n <- nseq[N]
+    for(S in 1:nsim){
+      out1 <- ghmul(n, g=g, h=h, p=2, cmat=cmat1)  
+      out2 <- ghmul(n, g=g, h=h, p=2, cmat=cmat2)  
+      res <- twocor.all(out1[,1],out1[,2],out2[,1],out2[,2])
+      res.spear[S, R, N] <- res$sig.boot.spear
+      res.pears.boot[S, R, N] <- res$sig.boot.pears
+      res.pears.fish[S, R, N] <- res$sig.fisher.pears
+      res.pears.hc4[S, R, N] <- res$sig.hc4.pears
+    }
+  }
+}
+
+beep(8)
+save(res.spear, res.pears.boot, res.pears.fish, res.pears.hc4,
+     rhoseq, nseq, nsim, es, g, h,
+     file = "./data/diff01_g02h0_varyrho1.RData")
+```
+
+### Results
+
+#### Spearman + bootstrap
+```{r}
+load("./data/diff01_g02h0_varyrho1.RData")
+
+pres <- apply(res.spear, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.tp(df)
+pA <- p + ggtitle("Spearman + bootstrap")
+pA
+```
+
+#### Pearson + bootstrap
+```{r}
+pres <- apply(res.pears.boot, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.tp(df)
+pB <- p + ggtitle("Pearson + bootstrap")
+pB
+```
+
+#### Pearson + Fisher
+```{r}
+pres <- apply(res.pears.fish, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.tp(df)
+pC <- p + ggtitle("Pearson + Fisher")
+pC
+```
+
+#### Pearson + HC4
+```{r}
+pres <- apply(res.pears.hc4, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.tp(df)
+pD <- p + ggtitle("Pearson + HC4")
+pD
+```
+
+#### Combine panels
+
+```{r, eval = FALSE}
+cowplot::plot_grid(pA, pB, pC, pD,
+                   labels = c("A", "B", "C", "D"))
+ggsave("./figures/diff01_g02h0_varyrho1_summary.pdf", width = 30, height = 20, units = "cm")
+```
+
+## g=0.2, h=0.2
+```{r, eval = FALSE}
+set.seed(21)
+rhoseq <- seq(0, 0.8, 0.1)
+nseq <- seq(50, 500, 50)
+nr <- length(rhoseq)
+nsim <- 4000
+es <- 0.1 # effect size
+g <- 0.2
+h <- 0.2
+res.spear <- array(0, dim = c(nsim, nr, length(nseq)))
+res.pears.boot <- array(0, dim = c(nsim, nr, length(nseq)))
+res.pears.fish <- array(0, dim = c(nsim, nr, length(nseq)))
+res.pears.hc4 <- array(0, dim = c(nsim, nr, length(nseq)))
+
+for(R in 1:nr){
+  beep(2)
+  rho <- rhoseq[R]
+  print(paste("sim rho =",rho))
+  cmat1 <- matrix(c(1,rho,rho,1),2,2)
+  cmat2 <- matrix(c(1,rho+es,rho+es,1),2,2)
+  for(N in 1:length(nseq)){
+    n <- nseq[N]
+    for(S in 1:nsim){
+      out1 <- ghmul(n, g=g, h=h, p=2, cmat=cmat1)  
+      out2 <- ghmul(n, g=g, h=h, p=2, cmat=cmat2)  
+      res <- twocor.all(out1[,1],out1[,2],out2[,1],out2[,2])
+      res.spear[S, R, N] <- res$sig.boot.spear
+      res.pears.boot[S, R, N] <- res$sig.boot.pears
+      res.pears.fish[S, R, N] <- res$sig.fisher.pears
+      res.pears.hc4[S, R, N] <- res$sig.hc4.pears
+    }
+  }
+}
+
+beep(8)
+save(res.spear, res.pears.boot, res.pears.fish, res.pears.hc4,
+     rhoseq, nseq, nsim, es, g, h,
+     file = "./data/diff01_g02h02_varyrho1.RData")
+```
+
+### Results
+
+#### Spearman + bootstrap
+```{r}
+load("./data/diff01_g02h02_varyrho1.RData")
+
+pres <- apply(res.spear, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.tp(df)
+pA <- p + ggtitle("Spearman + bootstrap")
+pA
+```
+
+#### Pearson + bootstrap
+```{r}
+pres <- apply(res.pears.boot, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.tp(df)
+pB <- p + ggtitle("Pearson + bootstrap")
+pB
+```
+
+#### Pearson + Fisher
+```{r}
+pres <- apply(res.pears.fish, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.tp(df)
+pC <- p + ggtitle("Pearson + Fisher")
+pC
+```
+
+#### Pearson + HC4
+```{r}
+pres <- apply(res.pears.hc4, c(2,3), mean) # power
+df <- mdf(pres, nseq, rhoseq)
+
+p <- plot.res.tp(df)
+pD <- p + ggtitle("Pearson + HC4")
+pD
+```
+
+#### Combine panels
+
+```{r, eval = FALSE}
+cowplot::plot_grid(pA, pB, pC, pD,
+                   labels = c("A", "B", "C", "D"))
+ggsave("./figures/diff01_g02h02_varyrho1_summary.pdf", width = 30, height = 20, units = "cm")
+```
+
+# rho1 = rho2 = 0.3, vary g, h = 0
+
+```{r, eval = FALSE}
+set.seed(21)
+gseq <- seq(0, 1, 0.1)
+ng <- length(gseq)
+h <- 0
+nseq <- seq(50, 500, 50)
+nsim <- 4000
+
+rho <- 0.3
+es <- 0 # effect size
+cmat1 <- matrix(c(1,rho,rho,1),2,2)
+cmat2 <- matrix(c(1,rho+es,rho+es,1),2,2)
+
+res.spear <- array(0, dim = c(nsim, ng, length(nseq)))
+res.pears.boot <- array(0, dim = c(nsim, ng, length(nseq)))
+res.pears.fish <- array(0, dim = c(nsim, ng, length(nseq)))
+res.pears.hc4 <- array(0, dim = c(nsim, ng, length(nseq)))
+
+for(G in 1:ng){
+  beep(2)
+  g <- gseq[G]
+  print(paste("sim g =",g))
+  for(N in 1:length(nseq)){
+    n <- nseq[N]
+    for(S in 1:nsim){
+      out1 <- ghmul(n, g=g, h=h, p=2, cmat=cmat1)  
+      out2 <- ghmul(n, g=g, h=h, p=2, cmat=cmat2)  
+      res <- twocor.all(out1[,1],out1[,2],out2[,1],out2[,2])
+      res.spear[S, G, N] <- res$sig.boot.spear
+      res.pears.boot[S, G, N] <- res$sig.boot.pears
+      res.pears.fish[S, G, N] <- res$sig.fisher.pears
+      res.pears.hc4[S, G, N] <- res$sig.hc4.pears
+    }
+  }
+}
+
+beep(8)
+save(res.spear, res.pears.boot, res.pears.fish, res.pears.hc4,
+     gseq, nseq, nsim, es, h, rho,
+     file = "./data/rho03_diff00_h0_varyg.RData")
+```
+
+## Define plot functions
+```{r}
+mdf <- function(pres, nseq, gseq){
+  ng <- length(gseq)
+df <- tibble(power = as.vector(pres),
+             n = rep(nseq, each = ng),
+             g = factor(rep(gseq, length(nseq))))
+df
+}
+
+plot.res.fp <- function(df, 
+                        ylim = c(0, 0.1),
+                        ybreaks = seq(0, 1, 0.025)){
+  ggplot(df, aes(x = n, y = power, colour = g)) + theme_gar +
+  scale_colour_viridis_d(end = 0.95) +
+  geom_hline(yintercept = 0.05) +
+  geom_line(size = 1) +
+  scale_y_continuous(breaks = ybreaks) +
+  coord_cartesian(ylim = ylim) +  
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  labs(x = "Sample size", 
+       y = "Prop. false positives")  
+}
+
+plot.res.tp <- function(df){
+  ggplot(df, aes(x = n, y = power, colour = g)) + theme_gar +
+  scale_colour_viridis_d(end = 0.95) +
+  geom_line(size = 1) +
+  scale_y_continuous(breaks = seq(0, 1, 0.1)) +
+  coord_cartesian(ylim = c(0, 1)) +  
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  labs(x = "Sample size",
+       y = "Prop. true positives")  
+}
+```
+
+## Results
+
+### Spearman + bootstrap
+```{r}
+load("./data/rho03_diff00_h0_varyg.RData")
+
+pres <- apply(res.spear, c(2,3), mean) # power
+df <- mdf(pres, nseq, gseq)
+
+p <- plot.res.fp(df, ylim = c(0, 0.21))
+pA <- p + ggtitle("Spearman + bootstrap")
+pA
+# ggsave("./figures/rho03_diff00_h0_varyg_spea.png", width = 15, height = 10, units = "cm")
+```
+
+#### Pearson + bootstrap
+```{r}
+pres <- apply(res.pears.boot, c(2,3), mean) # power
+df <- mdf(pres, nseq, gseq)
+
+p <- plot.res.fp(df, ylim = c(0, 0.21))
+pB <- p + ggtitle("Pearson + bootstrap")
+pB
+# ggsave("./figures/rho03_diff00_h0_varyg_boot.png", width = 15, height = 10, units = "cm")
+```
+
+### Pearson + Fisher
+```{r}
+pres <- apply(res.pears.fish, c(2,3), mean) # power
+df <- mdf(pres, nseq, gseq)
+
+p <- plot.res.fp(df, ylim = c(0, 0.21))
+pC <- p + ggtitle("Pearson + Fisher")
+pC
+# ggsave("./figures/rho03_diff00_h0_varyg_fish.png", width = 15, height = 10, units = "cm")
+```
+
+### Pearson + HC4
+```{r}
+pres <- apply(res.pears.hc4, c(2,3), mean) # power
+df <- mdf(pres, nseq, gseq)
+
+p <- plot.res.fp(df, ylim = c(0, 0.21))
+pD <- p + ggtitle("Pearson + HC4")
+pD
+```
+
+### Combine panels
+
+```{r, eval = FALSE}
+cowplot::plot_grid(pA, pB, pC, pD,
+                   labels = c("A", "B", "C", "D"))
+ggsave("./figures/rho03_diff00_h0_varyg.pdf", width = 30, height = 20, units = "cm")
+```
+
+# rho1 = 0.3, rho2 = 0.5, vary g, h = 0
+
+```{r, eval = FALSE}
+set.seed(21)
+gseq <- seq(0, 1, 0.1)
+ng <- length(gseq)
+h <- 0
+nseq <- seq(50, 500, 50)
+nsim <- 4000
+
+rho <- 0.3
+es <- 0.2 # effect size
+cmat1 <- matrix(c(1,rho,rho,1),2,2)
+cmat2 <- matrix(c(1,rho+es,rho+es,1),2,2)
+
+res.spear <- array(0, dim = c(nsim, ng, length(nseq)))
+res.pears.boot <- array(0, dim = c(nsim, ng, length(nseq)))
+res.pears.fish <- array(0, dim = c(nsim, ng, length(nseq)))
+res.pears.hc4 <- array(0, dim = c(nsim, ng, length(nseq)))
+
+for(G in 1:ng){
+  beep(2)
+  g <- gseq[G]
+  print(paste("sim g =",g))
+  for(N in 1:length(nseq)){
+    n <- nseq[N]
+    for(S in 1:nsim){
+      out1 <- ghmul(n, g=g, h=h, p=2, cmat=cmat1)  
+      out2 <- ghmul(n, g=g, h=h, p=2, cmat=cmat2)  
+      res <- twocor.all(out1[,1],out1[,2],out2[,1],out2[,2])
+      res.spear[S, G, N] <- res$sig.boot.spear
+      res.pears.boot[S, G, N] <- res$sig.boot.pears
+      res.pears.fish[S, G, N] <- res$sig.fisher.pears
+      res.pears.hc4[S, G, N] <- res$sig.hc4.pears
+    }
+  }
+}
+
+beep(8)
+save(res.spear, res.pears.boot, res.pears.fish, res.pears.hc4,
+     gseq, nseq, nsim, es, h, rho,
+     file = "./data/rho03_diff02_h0_varyg.RData")
+```
+
+## Results
+
+### Spearman + bootstrap
+```{r}
+load("./data/rho03_diff02_h0_varyg.RData")
+
+pres <- apply(res.spear, c(2,3), mean) # power
+df <- mdf(pres, nseq, gseq)
+
+p <- plot.res.tp(df)
+pA <- p + ggtitle("Spearman + bootstrap")
+pA
+# ggsave("./figures/rho03_diff02_h0_varyg_spea.png", width = 15, height = 10, units = "cm")
+```
+
+### Pearson + bootstrap
+```{r}
+pres <- apply(res.pears.boot, c(2,3), mean) # power
+df <- mdf(pres, nseq, gseq)
+
+p <- plot.res.tp(df)
+pB <- p + ggtitle("Pearson + bootstrap")
+pB
+# ggsave("./figures/rho03_diff02_h0_varyg_boot.png", width = 15, height = 10, units = "cm")
+```
+
+### Pearson + Fisher
+```{r}
+pres <- apply(res.pears.fish, c(2,3), mean) # power
+df <- mdf(pres, nseq, gseq)
+
+p <- plot.res.tp(df)
+pC <- p + ggtitle("Pearson + Fisher")
+pC
+# ggsave("./figures/rho03_diff02_h0_varyg_fish.png", width = 15, height = 10, units = "cm")
+```
+
+### Pearson + HC4
+```{r}
+pres <- apply(res.pears.hc4, c(2,3), mean) # power
+df <- mdf(pres, nseq, gseq)
+
+p <- plot.res.tp(df)
+pD <- p + ggtitle("Pearson + HC4")
+pD
+```
+
+### Combine panels
+
+```{r, eval = FALSE}
+cowplot::plot_grid(pA, pB, pC, pD,
+                   labels = c("A", "B", "C", "D"))
+ggsave("./figures/rho03_diff02_h0_varyg.pdf", width = 30, height = 20, units = "cm")
+```
+
+# rho1 = 0, rho2 = 0.6, vary g, h = 0
+
+```{r, eval = FALSE}
+set.seed(21)
+gseq <- seq(0, 1, 0.1)
+ng <- length(gseq)
+h <- 0
+nseq <- c(seq(10, 100, 10), 150, 200)
+nmax <- max(nseq)
+nsim <- 4000
+
+rho <- 0
+es <- 0.6 # effect size
+cmat1 <- matrix(c(1,rho,rho,1),2,2)
+cmat2 <- matrix(c(1,rho+es,rho+es,1),2,2)
+
+res.spear <- array(0, dim = c(nsim, ng, length(nseq)))
+res.pears.boot <- array(0, dim = c(nsim, ng, length(nseq)))
+res.pears.fish <- array(0, dim = c(nsim, ng, length(nseq)))
+res.pears.hc4 <- array(0, dim = c(nsim, ng, length(nseq)))
+
+for(G in 1:ng){
+  beep(2)
+  g <- gseq[G]
+  print(paste("sim g =",g))
+  for(S in 1:nsim){
+    # generate max n sample
+    out1 <- ghmul(nmax, g=g, h=h, p=2, cmat=cmat1)  
+    out2 <- ghmul(nmax, g=g, h=h, p=2, cmat=cmat2) 
+    for(N in 1:length(nseq)){
+      # subsample from max n sample
+      res <- twocor.all(out1[1:nseq[N],1],out1[1:nseq[N],2],out2[1:nseq[N],1],out2[1:nseq[N],2])
+      res.spear[S, G, N] <- res$sig.boot.spear
+      res.pears.boot[S, G, N] <- res$sig.boot.pears
+      res.pears.fish[S, G, N] <- res$sig.fisher.pears
+      res.pears.hc4[S, G, N] <- res$sig.hc4.pears
+    }
+  }
+}
+
+beep(8)
+save(res.spear, res.pears.boot, res.pears.fish, res.pears.hc4,
+     gseq, nseq, nsim, es, h, rho,
+     file = "./data/rho0_diff06_h0_varyg.RData")
+```
+
+## Results
+
+### Spearman + bootstrap
+```{r}
+load("./data/rho0_diff06_h0_varyg.RData")
+
+pres <- apply(res.spear, c(2,3), mean) # power
+df <- mdf(pres, nseq, gseq)
+
+p <- plot.res.tp(df) + scale_x_continuous(breaks = nseq)
+pA <- p + ggtitle("Spearman + bootstrap")
+pA
+# ggsave("./figures/rho0_diff06_h0_varyg_spea.png", width = 15, height = 10, units = "cm")
+```
+
+For a given expected population correlation difference, a certain *g* and a desired long run power value, we can use interpolation to find out the matching sample size.
+
+To achieve at least 80% power given an expected population difference of 0.6 and *g*=0, the minimum sample size is `r round(approx(y=nseq,x=pres[1,],xout=0.8)$y)` observations. For 90% power, the minimum sample size is `r round(approx(y=nseq,x=pres[1,],xout=0.9)$y)` observations.
+
+Now with *g*=1, to achieve at least 80% power the minimum sample size is `r round(approx(y=nseq,x=pres[11,],xout=0.8)$y)` observations; to achieve at least 90% power the minimum sample size is `r round(approx(y=nseq,x=pres[11,],xout=0.9)$y)` observations
+
+### Pearson + bootstrap
+```{r}
+pres <- apply(res.pears.boot, c(2,3), mean) # power
+df <- mdf(pres, nseq, gseq)
+
+p <- plot.res.tp(df) + scale_x_continuous(breaks = nseq)
+pB <- p + ggtitle("Pearson + bootstrap")
+pB
+# ggsave("./figures/rho0_diff06_h0_varyg_boot.png", width = 15, height = 10, units = "cm")
+```
+
+### Pearson + Fisher
+```{r}
+pres <- apply(res.pears.fish, c(2,3), mean) # power
+df <- mdf(pres, nseq, gseq)
+
+p <- plot.res.tp(df) + scale_x_continuous(breaks = nseq)
+pC <- p + ggtitle("Pearson + Fisher")
+pC
+# ggsave("./figures/rho0_diff06_h0_varyg_fish.png", width = 15, height = 10, units = "cm")
+```
+
+To achieve at least 80% power given an expected population difference of 0.6 and *g*=0, the minimum sample size is `r round(approx(y=nseq,x=pres[1,],xout=0.8)$y)` observations. For 90% power, the minimum sample size is `r round(approx(y=nseq,x=pres[1,],xout=0.9)$y)` observations.
+
+Now with *g*=1, to achieve at least 80% power the minimum sample size is `r round(approx(y=nseq,x=pres[11,],xout=0.8)$y)` observations; to achieve at least 90% power the minimum sample size is `r round(approx(y=nseq,x=pres[11,],xout=0.9)$y)` observations
+
+### Pearson + HC4
+```{r}
+pres <- apply(res.pears.hc4, c(2,3), mean) # power
+df <- mdf(pres, nseq, gseq)
+
+p <- plot.res.tp(df) + scale_x_continuous(breaks = nseq)
+pD <- p + ggtitle("Pearson + HC4")
+pD
+```
+
+### Combine panels
+
+```{r, eval = FALSE}
+cowplot::plot_grid(pA, pB, pC, pD,
+                   labels = c("A", "B", "C", "D"))
+ggsave("./figures/rho0_diff06_h0_varyg.pdf", width = 40, height = 20, units = "cm")
+```
+

@@ -1,0 +1,231 @@
+# Compute Spearman's rho
+spear <- function(x,y){
+corv <- cor(rank(x),rank(y))
+corv
+}
+
+# Fisher's z test of correlations
+fisher.cor.test <- function(r1, r2, n1, n2){
+  z1 <- atanh(r1)
+  z2 <- atanh(r2)
+  zobs <- (z1-z2) / sqrt( 1 / (n1-3) + 1 / (n2-3) )
+  pval <- 2 * pnorm(-abs(zobs))
+  # list(pval = pval, z = zobs)
+  pval
+}
+
+# Percentage bend correlation
+pbcor<-function(x,y,beta=.2){
+#   Compute the percentage bend correlation between x and y.
+#
+#   beta is the bending constant for omega sub N.
+#
+if(length(x)!=length(y))stop("The vectors do not have equal lengths")
+m1=cbind(x,y)
+m1<-elimna(m1)
+nval=nrow(m1)
+x<-m1[,1]
+y<-m1[,2]
+#  Have eliminated missing values
+temp<-sort(abs(x-median(x)))
+omhatx<-temp[floor((1-beta)*length(x))]
+temp<-sort(abs(y-median(y)))
+omhaty<-temp[floor((1-beta)*length(y))]
+a<-(x-pbos(x,beta))/omhatx
+b<-(y-pbos(y,beta))/omhaty
+a<-ifelse(a<=-1,-1,a)
+a<-ifelse(a>=1,1,a)
+b<-ifelse(b<=-1,-1,b)
+b<-ifelse(b>=1,1,b)
+pbcor<-sum(a*b)/sqrt(sum(a^2)*sum(b^2))
+test<-pbcor*sqrt((length(x) - 2)/(1 - pbcor^2))
+sig<-2*(1 - pt(abs(test),length(x)-2))
+list(cor=pbcor,test=test,p.value=sig,n=nval)
+}
+
+# Modified to return only whether P value is inferior or equal to alpha
+pbcor.sig<-function(x, y, beta=.2, alpha = 0.05){
+#   Compute the percentage bend correlation between x and y.
+#
+#   beta is the bending constant for omega sub N.
+#
+nval <- length(x)
+temp <- sort(abs(x-median(x)))
+omhatx <- temp[floor((1-beta)*length(x))]
+temp <- sort(abs(y-median(y)))
+omhaty <- temp[floor((1-beta)*length(y))]
+a <- (x-pbos(x,beta))/omhatx
+b <- (y-pbos(y,beta))/omhaty
+a <- ifelse(a<=-1,-1,a)
+a <- ifelse(a>=1,1,a)
+b <- ifelse(b<=-1,-1,b)
+b <- ifelse(b>=1,1,b)
+pbcor <- sum(a*b)/sqrt(sum(a^2)*sum(b^2))
+test <- pbcor*sqrt((length(x) - 2)/(1 - pbcor^2))
+sig <- 2*(1 - pt(abs(test),length(x)-2))
+sig <= alpha
+sig
+}
+
+# Winsorized correlation
+wincor<-function(x,y=NULL,tr=.2){
+#   Compute the Winsorized correlation between x and y.
+#
+#   tr is the amount of Winsorization
+#   This function also returns the Winsorized covariance
+#
+#    Pairwise deletion of missing values is performed.
+#
+#   x is a vector, or it can be a matrix with two columns when y=NULL
+#
+if(is.null(y[1])){
+if(ncol(x)>2)stop('Two variables only; for more than two use winall')
+y=x[,2]
+x=x[,1]
+}
+sig<-NA
+if(length(x)!=length(y))stop("Lengths of vectors are not equal")
+m1=cbind(x,y)
+m1<-elimna(m1)
+nval=nrow(m1)
+x<-m1[,1]
+y<-m1[,2]
+g<-floor(tr*length(x))
+xvec<-winval(x,tr)
+yvec<-winval(y,tr)
+wcor<-cor(xvec,yvec)
+wcov<-var(xvec,yvec)
+if(sum(x==y)!=length(x)){
+test<-wcor*sqrt((length(x)-2)/(1.-wcor^2))
+sig<-2*(1-pt(abs(test),length(x)-2*g-2))
+}
+list(cor=wcor,cov=wcov,p.value=sig,n=nval)
+}
+
+# Modified to return only whether P value is inferior or equal to alpha
+wincor.sig <- function(x, y, tr=.2, alpha = 0.05){
+#   Compute the Winsorized correlation between x and y.
+#   tr is the amount of Winsorization
+#   x and y are vectors
+#
+sig <- NA
+nval <- length(x)
+g <- floor(tr*length(x))
+xvec <- winval(x,tr)
+yvec <- winval(y,tr)
+wcor <- cor(xvec,yvec)
+if(sum(x==y)!=length(x)){
+test <- wcor*sqrt((length(x)-2)/(1.-wcor^2))
+sig <- 2*(1-pt(abs(test),length(x)-2*g-2))
+}
+sig <= alpha
+sig
+}
+
+winval<-function(x,tr=.2){
+#
+#  Winsorize the data in the vector x.
+#  tr is the amount of Winsorization which defaults to .2.
+#
+#  This function is used by several other functions that come with this book.
+#
+y<-sort(x)
+n<-length(x)
+ibot<-floor(tr*n)+1
+itop<-length(x)-ibot+1
+xbot<-y[ibot]
+xtop<-y[itop]
+winval<-ifelse(x<=xbot,xbot,x)
+winval<-ifelse(winval>=xtop,xtop,winval)
+winval
+}
+
+# merge twocor & twopcor + Fisher + HC4 methods
+twocor.all <- function(x1,y1,x2,y2,nboot=599,alpha=.05){
+  #
+  #  Compute a .95 confidence interval for the
+  #  difference between two correlation coefficients
+  #  corresponding to two independent groups.
+  #
+  #   The default number of bootstrap samples is nboot=599
+  #
+  # Fisher -----------------
+  r1 <- cor(x1, y1)
+  r2 <- cor(x2, y2)
+  n1 <- length(x1)
+  n2 <- length(x2)
+  sig.fisher.pears <- fisher.cor.test(r1, r2, n1, n2) <= alpha
+  # HC4 -------------------
+  sig.hc4.pears <- twohc4cor(x1,y1,x2,y2) <= alpha
+  # BOOTSTRAP -------------
+  data1 <- matrix(sample(length(y1),size=length(y1)*nboot,replace=TRUE),nrow=nboot)
+  data2 <- matrix(sample(length(y2),size=length(y2)*nboot,replace=TRUE),nrow=nboot)
+  # PEARSON ---------------
+  bvec1 <- apply(data1,1,pearsboot,x1,y1) # A 1 by nboot matrix.
+  bvec2 <- apply(data2,1,pearsboot,x2,y2) # A 1 by nboot matrix.
+  bvec <- bvec1 - bvec2
+  ilow<-15
+  ihi<-584
+  if(length(y1)+length(y2) < 250){
+    ilow<-14
+    ihi<-585
+  }
+  if(length(y1)+length(y2) < 180){
+    ilow<-11
+    ihi<-588
+  }
+  if(length(y1)+length(y2) < 80){
+    ilow<-8
+    ihi<-592
+  }
+  if(length(y1)+length(y2) < 40){
+    ilow<-7
+    ihi<-593
+  }
+  bsort<-sort(bvec)
+  ci<-c(bsort[ilow],bsort[ihi])
+  sig <- 0
+  if(ci[1]>0 || ci[2]<0){
+    sig <- 1
+  }
+  sig.boot.pears <- sig
+  # SPEARMAN --------------
+  bvec1 <- apply(data1,1,spearboot,x1,y1) # A 1 by nboot matrix.
+  bvec2 <- apply(data2,1,spearboot,x2,y2) # A 1 by nboot matrix.
+  bvec <- bvec1 - bvec2
+  bsort <- sort(bvec)
+  term <- alpha/2
+  ilow <- round((alpha/2) * nboot)
+  ihi <- nboot - ilow
+  ilow <- ilow+1
+  corci <- 1
+  corci[1] <- bsort[ilow]
+  corci[2] <- bsort[ihi]
+  sig <- 0
+  if(corci[1]>0 || corci[2]<0){
+    sig <- 1
+  }
+  sig.boot.spear <- sig
+  list(sig.boot.spear = sig.boot.spear,
+       sig.boot.pears = sig.boot.pears,
+       sig.fisher.pears = sig.fisher.pears,
+       sig.hc4.pears = sig.hc4.pears)
+}
+
+#  Compute correlation for x[isub] and y[isub]
+#  isub is a vector of length n,
+#  a bootstrap sample from the sequence of integers
+#  1, 2, 3, ..., n
+spearboot<-function(isub,x,y){
+corbsub <- spear(x[isub],y[isub])
+corbsub
+}
+
+#  Compute correlation for x[isub] and y[isub]
+#  isub is a vector of length n,
+#  a bootstrap sample from the sequence of integers
+#  1, 2, 3, ..., n
+pearsboot<-function(isub,x,y){
+corbsub <- cor(x[isub],y[isub])
+corbsub
+}

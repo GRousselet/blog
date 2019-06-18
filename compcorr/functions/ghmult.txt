@@ -1,0 +1,50 @@
+# g & h multivariate distributions
+
+ghmul<-function(n,g=0,h=0,p=2,cmat=diag(rep(1,p))){
+  #
+  # generate n observations from a p-variate dist
+  # based on the g and h dist.
+  #
+  # cmat is the correlation matrix
+  #
+  x<-rmulnorm(n,p,cmat)
+  for(j in 1:p){
+    if (g>0){
+      x[,j]<-(exp(g*x[,j])-1)*exp(h*x[,j]^2/2)/g
+    }
+    if(g==0)x[,j]<-x[,j]*exp(h*x[,j]^2/2)
+  }
+  x
+}
+
+rmulnorm<-function(n,p,cmat){
+  #
+  # Generate data from a multivariate normal
+  # n= sample size
+  # p= number of variables
+  # cmat is the covariance (or correlation) matrix
+  #
+  # Method (e.g. Browne, M. W. (1968) A comparison of factor analytic
+  # techniques. Psychometrika, 33, 267-334.
+  #  Let U'U=R be the Cholesky decomposition of R. Generate independent data
+  #  from some dist yielding X. Then XU has population correlation matrix R
+  #
+  y<-matrix(rnorm(n*p),ncol=p)
+  rval<-matsqrt(cmat)
+  y<-t(rval%*%t(y))
+  y
+}
+
+matsqrt <- function(x) {
+  xev1<-NA
+  xe <- eigen(x)
+  xe1 <- xe$values
+  if(all(xe1 >= 0)) {
+    xev1 <- diag(sqrt(xe1))
+  }
+  if(is.na(xev1[1]))stop("The matrix has negative eigenvalues")
+  xval1 <- cbind(xe$vectors)
+  xval1i <- solve(xval1)
+  y <- xval1 %*% xev1 %*% xval1i
+  y
+}
