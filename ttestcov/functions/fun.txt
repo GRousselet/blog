@@ -320,40 +320,6 @@ if(pr)m<-dhat
 m
 }
 
-elimna<-function(m){
-#
-# remove any rows of data having missing values
-#
-DONE=FALSE
-if(is.list(m) && is.matrix(m)){
-z=pool.a.list(m)
-m=matrix(z,ncol=ncol(m))
-DONE=TRUE
-}
-if(!DONE){
-if(is.list(m) && is.matrix(m[[1]])){
-for(j in 1:length(m))m[[j]]=na.omit(m[[j]])
-e=m
-DONE=TRUE
-}}
-if(!DONE){
-if(is.list(m) && is.null(dim(m))){ #!is.matrix(m))
-for(j in 1:length(m))m[[j]]=as.vector(na.omit(m[[j]]))
-e=m
-DONE=TRUE
-}}
-if(!DONE){
-#if(!is.list(m)){
-#if(is.null(dim(m)))
-m<-as.matrix(m)
-ikeep<-c(1:nrow(m))
-for(i in 1:nrow(m))if(sum(is.na(m[i,])>=1))ikeep[i]<-0
-e<-m[ikeep[ikeep>=1],]
-#}
-}
-e
-}
-
 idealf<-function(x,na.rm=FALSE){
 #
 # Compute the ideal fourths for data in x
