@@ -1,7 +1,7 @@
 One-sample confidence interval: coverage, width, shift
 ================
 Guillaume A. Rousselet
-2019-07-10
+2019-07-12
 
 # Dependencies
 
@@ -730,6 +730,194 @@ cowplot::plot_grid(pA, pB, pC, pD,
 ggsave(filename=('./figures/figure_g1h0_ci.pdf'),width=15,height=10)
 ```
 
+## Illustrate CIs that did include the population
+
+### Mean
+
+``` r
+pop <- pop.m
+cond <- 1 # mean
+ci <- ci.all[ci.cov[,cond]==1, cond,]
+# variable to colour code CIs based on asymmetry
+asym <- vector(mode = "numeric", length = dim(ci)[1])
+for(S in 1:dim(ci)[1]){
+  asym[S] <- ((pop - ci[S,1]) - (ci[S,2] - pop)) > 0 # left shifted?
+} 
+# sort CIs by low bound value
+ix <- sort(ci[,1], index.return = TRUE)$ix
+ci <- ci[ix,]
+asym <- asym[ix]
+  
+df <- tibble(x1 = ci[,1],
+             x2 = ci[,2],
+             y = seq(1,length(x1)),
+             asym = factor(asym))
+
+p <- ggplot(df, aes(x = x1, xend = x2, y = y, yend = y)) + theme_gar +
+  geom_segment(aes(colour = asym)) +
+  scale_color_grey() +
+  geom_vline(xintercept = pop, colour = "orange") +
+labs(x = "Bounds", y = "Confidence intervals") +
+  coord_cartesian(xlim = c(-3, 13),
+                  ylim = c(1, length(df$x1)), expand = TRUE) +
+  scale_x_continuous(breaks = seq(-6, 16, 2)) +
+  theme(legend.position = "none") +
+  ggtitle("Mean")
+p
+```
+
+![](ttestcov_files/figure-gfm/unnamed-chunk-24-1.png)<!-- -->
+
+``` r
+pA <- p
+```
+
+No imbalance between left and right shifts. Proportion of right shifted
+CIs = 49.7%. CIs tend to extend too much to the right. As we trim, the
+imbalance is progressively resolved.
+
+### 10% trimmed mean
+
+``` r
+pop <- pop.tm10
+cond <- 2 # 10% trimmed mean
+ci <- ci.all[ci.cov[,cond]==1, cond,]
+# variable to colour code CIs based on asymmetry
+asym <- vector(mode = "numeric", length = dim(ci)[1])
+for(S in 1:dim(ci)[1]){
+  asym[S] <- ((pop - ci[S,1]) - (ci[S,2] - pop)) > 0 # left shifted?
+} 
+# sort CIs by low bound value
+ix <- sort(ci[,1], index.return = TRUE)$ix
+ci <- ci[ix,]
+asym <- asym[ix]
+  
+df <- tibble(x1 = ci[,1],
+             x2 = ci[,2],
+             y = seq(1,length(x1)),
+             asym = factor(asym))
+
+p <- ggplot(df, aes(x = x1, xend = x2, y = y, yend = y)) + theme_gar +
+  geom_segment(aes(colour = asym)) +
+  scale_color_grey() +
+  geom_vline(xintercept = pop, colour = "orange") +
+labs(x = "Bounds", y = "Confidence intervals") +
+  coord_cartesian(xlim = c(-3, 13),
+                  ylim = c(1, length(df$x1)), expand = TRUE) +
+  scale_x_continuous(breaks = seq(-6, 16, 2)) +
+  theme(legend.position = "none") +
+  ggtitle("10% trimmed mean") 
+p
+```
+
+![](ttestcov_files/figure-gfm/unnamed-chunk-25-1.png)<!-- -->
+
+``` r
+pB <- p
+```
+
+Proportion of right shifted CIs = 54.4%.
+
+### 20% trimmed mean
+
+``` r
+pop <- pop.tm20
+cond <- 3 # 20% trimmed mean
+ci <- ci.all[ci.cov[,cond]==1, cond,]
+# variable to colour code CIs based on asymmetry
+asym <- vector(mode = "numeric", length = dim(ci)[1])
+for(S in 1:dim(ci)[1]){
+  asym[S] <- ((pop - ci[S,1]) - (ci[S,2] - pop)) > 0 # left shifted?
+} 
+# sort CIs by low bound value
+ix <- sort(ci[,1], index.return = TRUE)$ix
+ci <- ci[ix,]
+asym <- asym[ix]
+  
+df <- tibble(x1 = ci[,1],
+             x2 = ci[,2],
+             y = seq(1,length(x1)),
+             asym = factor(asym))
+
+p <- ggplot(df, aes(x = x1, xend = x2, y = y, yend = y)) + theme_gar +
+  geom_segment(aes(colour = asym)) +
+  scale_color_grey() +
+  geom_vline(xintercept = pop, colour = "orange") +
+labs(x = "Bounds", y = "Confidence intervals") +
+  coord_cartesian(xlim = c(-3, 13),
+                  ylim = c(1, length(df$x1)), expand = TRUE) +
+  scale_x_continuous(breaks = seq(-6, 16, 2)) +
+  theme(legend.position = "none") +
+  ggtitle("20% trimmed mean") 
+p
+```
+
+![](ttestcov_files/figure-gfm/unnamed-chunk-26-1.png)<!-- -->
+
+``` r
+pC <- p
+```
+
+Proportion of right shifted CIs = 54.1%.
+
+### Median
+
+``` r
+pop <- pop.md
+cond <- 4 # median
+ci <- ci.all[ci.cov[,cond]==1, cond,]
+# variable to colour code CIs based on asymmetry
+asym <- vector(mode = "numeric", length = dim(ci)[1])
+for(S in 1:dim(ci)[1]){
+  asym[S] <- ((pop - ci[S,1]) - (ci[S,2] - pop)) > 0 # left shifted?
+} 
+# sort CIs by low bound value
+ix <- sort(ci[,1], index.return = TRUE)$ix
+ci <- ci[ix,]
+asym <- asym[ix]
+  
+df <- tibble(x1 = ci[,1],
+             x2 = ci[,2],
+             y = seq(1,length(x1)),
+             asym = factor(asym))
+
+p <- ggplot(df, aes(x = x1, xend = x2, y = y, yend = y)) + theme_gar +
+  geom_segment(aes(colour = asym)) +
+  scale_color_grey() +
+  geom_vline(xintercept = pop, colour = "orange") +
+labs(x = "Bounds", y = "Confidence intervals") +
+  coord_cartesian(xlim = c(-3, 13),
+                  ylim = c(1, length(df$x1)), expand = TRUE) +
+  scale_x_continuous(breaks = seq(-6, 16, 2)) +
+  theme(legend.position = "none") +
+  ggtitle("Median") 
+p
+```
+
+![](ttestcov_files/figure-gfm/unnamed-chunk-27-1.png)<!-- -->
+
+``` r
+pD <- p
+```
+
+With the median we have a dominance of right shifted CIs = 71.1% and CIs
+are much narrower than for the mean. So CIs for the median, like the
+sample median, tend to overestimate the population median, a bias we
+have documented in Rousselet & Wilcox (2019). Increasing the sample size
+gets rid of this bias. Alternatively, a bootstrap bias correction could
+be used.
+
+## Summary figure
+
+``` r
+cowplot::plot_grid(pA, pB, pC, pD,
+                   labels = c("A", "B", "C", "D"), 
+                   nrow = 2)
+
+# save figure
+ggsave(filename=('./figures/figure_g1h0_ci_pop.pdf'),width=15,height=10)
+```
+
 # Test with g=1 & h=0.2 distribution
 
 What happens if we sample from a skewed distribution (`g=1`) in which
@@ -880,7 +1068,7 @@ coord_cartesian(xlim = c(-1, 5),
 p
 ```
 
-![](ttestcov_files/figure-gfm/unnamed-chunk-26-1.png)<!-- -->
+![](ttestcov_files/figure-gfm/unnamed-chunk-31-1.png)<!-- -->
 
 ``` r
 pA <- p
@@ -907,7 +1095,7 @@ coord_cartesian(xlim = c(-1, 5),
 p
 ```
 
-![](ttestcov_files/figure-gfm/unnamed-chunk-27-1.png)<!-- -->
+![](ttestcov_files/figure-gfm/unnamed-chunk-32-1.png)<!-- -->
 
 ``` r
 pB <- p
@@ -934,7 +1122,7 @@ coord_cartesian(xlim = c(-1, 5),
 p
 ```
 
-![](ttestcov_files/figure-gfm/unnamed-chunk-28-1.png)<!-- -->
+![](ttestcov_files/figure-gfm/unnamed-chunk-33-1.png)<!-- -->
 
 ``` r
 pC <- p
@@ -961,7 +1149,7 @@ coord_cartesian(xlim = c(-1, 5),
 p
 ```
 
-![](ttestcov_files/figure-gfm/unnamed-chunk-29-1.png)<!-- -->
+![](ttestcov_files/figure-gfm/unnamed-chunk-34-1.png)<!-- -->
 
 ``` r
 pD <- p
@@ -1098,7 +1286,7 @@ p <- ggplot(df, aes(x = g, y = y, colour = estimator, group = estimator)) +
 p
 ```
 
-![](ttestcov_files/figure-gfm/unnamed-chunk-32-1.png)<!-- -->
+![](ttestcov_files/figure-gfm/unnamed-chunk-37-1.png)<!-- -->
 
 ``` r
 p1 <- p
@@ -1127,7 +1315,7 @@ p <- ggplot(df, aes(x = g, y = y, colour = estimator, group = estimator)) +
 p
 ```
 
-![](ttestcov_files/figure-gfm/unnamed-chunk-33-1.png)<!-- -->
+![](ttestcov_files/figure-gfm/unnamed-chunk-38-1.png)<!-- -->
 
 ``` r
 p2 <- p
@@ -1161,7 +1349,7 @@ p <- ggplot(df, aes(x = g, y = y, colour = estimator, group = estimator)) +
 p
 ```
 
-![](ttestcov_files/figure-gfm/unnamed-chunk-34-1.png)<!-- -->
+![](ttestcov_files/figure-gfm/unnamed-chunk-39-1.png)<!-- -->
 
 ``` r
 p3 <- p
@@ -1299,7 +1487,7 @@ p <- ggplot(df, aes(x = g, y = y, colour = estimator, group = estimator)) +
 p
 ```
 
-![](ttestcov_files/figure-gfm/unnamed-chunk-37-1.png)<!-- -->
+![](ttestcov_files/figure-gfm/unnamed-chunk-42-1.png)<!-- -->
 
 ``` r
 p1 <- p
@@ -1327,7 +1515,7 @@ p <- ggplot(df, aes(x = g, y = y, colour = estimator, group = estimator)) +
 p
 ```
 
-![](ttestcov_files/figure-gfm/unnamed-chunk-38-1.png)<!-- -->
+![](ttestcov_files/figure-gfm/unnamed-chunk-43-1.png)<!-- -->
 
 ``` r
 p2 <- p
@@ -1358,7 +1546,7 @@ p <- ggplot(df, aes(x = g, y = y, colour = estimator, group = estimator)) +
 p
 ```
 
-![](ttestcov_files/figure-gfm/unnamed-chunk-39-1.png)<!-- -->
+![](ttestcov_files/figure-gfm/unnamed-chunk-44-1.png)<!-- -->
 
 ``` r
 p3 <- p
