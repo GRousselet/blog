@@ -1,0 +1,115 @@
+# merge twocor + twopcor + Fisher + HC4 + percentage bend + winsorized methods
+twocor.all <- function(x1,y1,x2,y2,rho=NULL){
+  #
+  #  Compute a .95 confidence interval for the
+  #  difference between two correlation coefficients
+  #  corresponding to two independent groups.
+  #
+  #   The number of bootstrap samples is nboot=599, except for
+  #   tworhobt which uses nboot=499.
+  #
+  #   alpha = 0.05.
+  #
+  alpha <- .05
+  nboot <- 599
+  # Fisher -----------------
+  r1 <- cor(x1, y1)
+  r2 <- cor(x2, y2)
+  n1 <- length(x1)
+  n2 <- length(x2)
+  sig.fisher.pears <- 0
+  if(fisher.cor.test(r1, r2, n1, n2) <= alpha)sig.fisher.pears <- 1
+  cov.zou.pears <- 0
+  if(!is.null(rho)){ # coverage
+  ci <- r.ind.ci(r1, r2, n1, n2) # Zou's ci method
+  if(rho >= ci[1] && rho <= ci[2])cov.zou.pears <- 1
+  }
+  # HC4 -------------------
+  v <- tworhobt(x1,y1,x2,y2) # default to nboot = 499
+  sig.hc4.pears <- 0
+  if(v$test < v$ci[1] || v$test > v$ci[2])sig.hc4.pears <- 1
+  # BOOTSTRAP SAMPLES -------------
+  data1 <- matrix(sample(length(y1),size=length(y1)*nboot,replace=TRUE),nrow=nboot)
+  data2 <- matrix(sample(length(y2),size=length(y2)*nboot,replace=TRUE),nrow=nboot)
+  # PEARSON ---------------
+  bvec1 <- apply(data1,1,pearsboot,x1,y1) # A 1 by nboot matrix.
+  bvec2 <- apply(data2,1,pearsboot,x2,y2) # A 1 by nboot matrix.
+  bvec <- bvec1 - bvec2
+  ilow<-15
+  ihi<-584
+  if(length(y1)+length(y2) < 250){
+    ilow<-14
+    ihi<-585
+  }
+  if(length(y1)+length(y2) < 180){
+    ilow<-11
+    ihi<-588
+  }
+  if(length(y1)+length(y2) < 80){
+    ilow<-8
+    ihi<-592
+  }
+  if(length(y1)+length(y2) < 40){
+    ilow<-7
+    ihi<-593
+  }
+  bsort <- sort(bvec)
+  ci <- c(bsort[ilow],bsort[ihi])
+  sig.boot.pears <- 0
+  if(ci[1]>0 || ci[2]<0)sig.boot.pears <- 1
+  cov.boot.pears <- 0
+  if(!is.null(rho)){ # coverage
+  if(rho >= ci[1] && rho <= ci[2])cov.boot.pears <- 1
+  }
+  # SPEARMAN --------------
+  bvec1 <- apply(data1,1,spearboot,x1,y1) # A 1 by nboot matrix.
+  bvec2 <- apply(data2,1,spearboot,x2,y2) # A 1 by nboot matrix.
+  bvec <- bvec1 - bvec2
+  bsort <- sort(bvec)
+  ilow <- round((alpha/2) * nboot)
+  ihi <- nboot - ilow
+  ilow <- ilow+1
+  ci <- c(bsort[ilow],bsort[ihi])
+  sig.boot.spear <- 0
+  if(ci[1]>0 || ci[2]<0)sig.boot.spear <- 1
+  cov.boot.spear <- 0
+  if(!is.null(rho)){ # coverage
+  if(rho >= ci[1] && rho <= ci[2])cov.boot.spear <- 1
+  }
+  # WINSORIZED CORRELATION --------------
+  bvec1 <- apply(data1,1,wincorboot,x1,y1) # A 1 by nboot matrix.
+  bvec2 <- apply(data2,1,wincorboot,x2,y2) # A 1 by nboot matrix.
+  bvec <- bvec1 - bvec2
+  bsort <- sort(bvec)
+  ci <- c(bsort[ilow],bsort[ihi])
+  sig.boot.wcorr <- 0
+  if(ci[1]>0 || ci[2]<0)sig.boot.wcorr <- 1
+  cov.boot.wcorr <- 0
+  if(!is.null(rho)){ # coverage
+  if(rho >= ci[1] && rho <= ci[2])cov.boot.wcorr <- 1
+  }
+  # PERCENTAGE BEND CORRELATION --------------
+  bvec1 <- apply(data1,1,pbcorboot,x1,y1) # A 1 by nboot matrix.
+  bvec2 <- apply(data2,1,pbcorboot,x2,y2) # A 1 by nboot matrix.
+  bvec <- bvec1 - bvec2
+  bsort <- sort(bvec)
+  ci <- c(bsort[ilow],bsort[ihi])
+  sig.boot.pbcor <- 0
+  if(ci[1]>0 || ci[2]<0)sig.boot.pbcor <- 1
+  cov.boot.pbcor <- 0
+  if(!is.null(rho)){ # coverage
+  if(rho >= ci[1] && rho <= ci[2])cov.boot.pbcor <- 1
+  }
+  # ------------------------------------
+  list(sig.boot.pbcor = sig.boot.pbcor,
+       sig.boot.wcorr = sig.boot.wcorr,
+       sig.boot.spear = sig.boot.spear,
+       sig.boot.pears = sig.boot.pears,
+       sig.fisher.pears = sig.fisher.pears,
+       sig.hc4.pears = sig.hc4.pears,
+       cov.zou.pears = cov.zou.pears,
+       cov.boot.pbcor = cov.boot.pbcor,
+       cov.boot.wcorr = cov.boot.wcorr,
+       cov.boot.spear = cov.boot.spear,
+       cov.boot.pears = cov.boot.pears)
+}

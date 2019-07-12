@@ -1,0 +1,468 @@
+mdf <- function(pres, nseq, rhoseq){
+  nr <- length(rhoseq)
+  df <- tibble(power = as.vector(pres),
+             n = rep(nseq, each = nr),
+             rho = factor(rep(rhoseq, length(nseq))))
+df
+}
+
+mdf.g <- function(pres, nseq, gseq){
+  ng <- length(gseq)
+  df <- tibble(power = as.vector(pres),
+             n = rep(nseq, each = ng),
+             g = factor(rep(gseq, length(nseq))))
+df
+}
+
+plot.res.fp <- function(df,
+                        ylim = c(0, 0.1),
+                        ybreaks = seq(0, 1, 0.025)){
+  ggplot(df, aes(x = n, y = power, colour = rho)) + theme_gar +
+  scale_colour_viridis_d(end = 0.95) +
+  geom_hline(yintercept = 0.05) +
+  geom_line(size = 1) +
+  scale_y_continuous(breaks = ybreaks) +
+  coord_cartesian(ylim = ylim) +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  labs(x = "Sample size",
+       y = "Prop. false positives")
+}
+
+plot.res.tp <- function(df,
+                        ylim = c(0, 0.1),
+                        ybreaks = seq(0, 1, 0.1)){
+  ggplot(df, aes(x = n, y = power, colour = rho)) + theme_gar +
+  scale_colour_viridis_d(end = 0.95) +
+  geom_line(size = 1) +
+  scale_y_continuous(breaks = ybreaks) +
+  coord_cartesian(ylim = ylim) +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  labs(x = "Sample size",
+       y = "Prop. true positives")
+}
+
+plot.res.fp.g <- function(df,
+                        ylim = c(0, 0.1),
+                        ybreaks = seq(0, 1, 0.025)){
+  ggplot(df, aes(x = n, y = power, colour = g)) + theme_gar +
+  scale_colour_viridis_d(end = 0.95) +
+  geom_hline(yintercept = 0.05) +
+  geom_line(size = 1) +
+  scale_y_continuous(breaks = ybreaks) +
+  coord_cartesian(ylim = ylim) +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  labs(x = "Sample size",
+       y = "Prop. false positives")
+}
+
+plot.res.tp.g <- function(df,
+                        ylim = c(0, 0.1),
+                        ybreaks = seq(0, 1, 0.1)){
+  ggplot(df, aes(x = n, y = power, colour = g)) + theme_gar +
+  scale_colour_viridis_d(end = 0.95) +
+  geom_line(size = 1) +
+  scale_y_continuous(breaks = ybreaks) +
+  coord_cartesian(ylim = ylim) +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  labs(x = "Sample size",
+       y = "Prop. true positives")
+}
+
+# CI coverage -------------------------------
+plot.res.cov <- function(df,
+                        ylim = c(0.5, 1),
+                        ybreaks = seq(0, 1, 0.1)){
+  ggplot(df, aes(x = n, y = power, colour = rho)) + theme_gar +
+  geom_hline(yintercept = 0.95) +
+  geom_line(size = 1) +
+  scale_colour_viridis_d(end = 0.95) +
+  scale_y_continuous(breaks = ybreaks) +
+  coord_cartesian(ylim = ylim) +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  theme(legend.position = "right") +
+  labs(x = "Sample size",
+       y = "Coverage prob.")
+}
+
+plot.res.cov.g <- function(df,
+                        ylim = c(0.5, 1),
+                        ybreaks = seq(0, 1, 0.1)){
+  ggplot(df, aes(x = n, y = power, colour = g)) + theme_gar +
+  geom_hline(yintercept = 0.95) +
+  geom_line(size = 1) +
+  scale_colour_viridis_d(end = 0.95) +
+  scale_y_continuous(breaks = ybreaks) +
+  coord_cartesian(ylim = ylim) +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  theme(legend.position = "right") +
+  labs(x = "Sample size",
+       y = "Coverage prob.")
+}
+
+# CI sign of discrepancy --------------------------------
+plot.res.dis <- function(df,
+                        ylim = c(-1, 1),
+                        ybreaks = seq(-1, 1, 0.2)){
+  ggplot(df, aes(x = n, y = power, colour = rho)) + theme_gar +
+  geom_hline(yintercept = 0) +
+  geom_line(size = 1) +
+  scale_colour_viridis_d(end = 0.95) +
+  scale_y_continuous(breaks = ybreaks) +
+  coord_cartesian(ylim = ylim) +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  theme(legend.position = "right") +
+  labs(x = "Sample size",
+       y = "CI discrepancy")
+}
+
+plot.res.dis.g <- function(df,
+                        ylim = c(-1, 1),
+                        ybreaks = seq(-1, 1, 0.2)){
+  ggplot(df, aes(x = n, y = power, colour = g)) + theme_gar +
+  geom_hline(yintercept = 0) +
+  geom_line(size = 1) +
+  scale_colour_viridis_d(end = 0.95) +
+  scale_y_continuous(breaks = ybreaks) +
+  coord_cartesian(ylim = ylim) +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  theme(legend.position = "right") +
+  labs(x = "Sample size",
+       y = "CI discrepancy")
+}
+
+# CI width -----------------------------------------------
+plot.res.wid <- function(df,
+                        ylim = c(0, 1),
+                        ybreaks = seq(0, 1, 0.1)){
+  ggplot(df, aes(x = n, y = power, colour = rho)) + theme_gar +
+  geom_line(size = 1) +
+  scale_colour_viridis_d(end = 0.95) +
+  scale_y_continuous(breaks = ybreaks) +
+  coord_cartesian(ylim = ylim) +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  theme(legend.position = "right") +
+  labs(x = "Sample size",
+       y = "CI width")
+}
+
+plot.res.wid.g <- function(df,
+                        ylim = c(0, 1),
+                        ybreaks = seq(0, 1, 0.1)){
+  ggplot(df, aes(x = n, y = power, colour = g)) + theme_gar +
+  geom_line(size = 1) +
+  scale_colour_viridis_d(end = 0.95) +
+  scale_y_continuous(breaks = ybreaks) +
+  coord_cartesian(ylim = ylim) +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  theme(legend.position = "right") +
+  labs(x = "Sample size",
+       y = "CI width")
+}
+
+plot.all.fp <- function(ylim = c(0, 0.2), ...){
+
+# Pearson + Fisher
+pres <- apply(res.pears.fish, c(2,3), mean)
+df <- mdf(pres, nseq, rhoseq)
+p <- plot.res.fp(df, ylim = ylim)
+p.pears.fish <- p + ggtitle("Pearson + Fisher") +
+                    theme(legend.position = c(0.3,0.8))
+
+# Pearson + bootstrap
+pres <- apply(res.pears.boot, c(2,3), mean)
+df <- mdf(pres, nseq, rhoseq)
+p <- plot.res.fp(df, ylim = ylim)
+p.pears.boot <- p + ggtitle("Pearson + bootstrap") +
+                    theme(legend.position = "none")
+
+# Pearson + HC4
+pres <- apply(res.pears.hc4, c(2,3), mean)
+df <- mdf(pres, nseq, rhoseq)
+p <- plot.res.fp(df, ylim = ylim)
+p.pears.hc4 <- p + ggtitle("Pearson + HC4") +
+                    theme(legend.position = "none")
+
+# Spearman + bootstrap
+pres <- apply(res.spear, c(2,3), mean)
+df <- mdf(pres, nseq, rhoseq)
+p <- plot.res.fp(df, ylim = ylim)
+p.spear <- p + ggtitle("Spearman + bootstrap") +
+               theme(legend.position = "none")
+
+# Percentage bend + bootstrap
+pres <- apply(res.pbend, c(2,3), mean)
+df <- mdf(pres, nseq, rhoseq)
+p <- plot.res.fp(df, ylim = ylim)
+p.pbend <- p + ggtitle("Perc. bend + bootstrap") +
+              theme(legend.position = "none")
+
+# Winsorized correlation + bootstrap
+pres <- apply(res.wcorr, c(2,3), mean)
+df <- mdf(pres, nseq, rhoseq)
+p <- plot.res.fp(df, ylim = ylim)
+p.wcorr <- p + ggtitle("Winsorized corr. + bootstrap") +
+              theme(legend.position = "none")
+
+list(p.pears.fish = p.pears.fish,
+     p.pears.boot = p.pears.boot,
+     p.pears.hc4 = p.pears.hc4,
+     p.spear = p.spear,
+     p.pbend = p.pbend,
+     p.wcorr = p.wcorr)
+
+}
+
+plot.all.tp <- function(ylim = c(0, 1), ...){
+
+# Pearson + Fisher
+pres <- apply(res.pears.fish, c(2,3), mean)
+df <- mdf(pres, nseq, rhoseq)
+p <- plot.res.tp(df, ylim = ylim)
+p.pears.fish <- p + ggtitle("Pearson + Fisher") +
+                    theme(legend.position = "right")
+
+# Pearson + bootstrap
+pres <- apply(res.pears.boot, c(2,3), mean)
+df <- mdf(pres, nseq, rhoseq)
+p <- plot.res.tp(df, ylim = ylim)
+p.pears.boot <- p + ggtitle("Pearson + bootstrap") +
+                    theme(legend.position = "none")
+
+# Pearson + HC4
+pres <- apply(res.pears.hc4, c(2,3), mean)
+df <- mdf(pres, nseq, rhoseq)
+p <- plot.res.tp(df, ylim = ylim)
+p.pears.hc4 <- p + ggtitle("Pearson + HC4") +
+                    theme(legend.position = "none")
+
+# Spearman + bootstrap
+pres <- apply(res.spear, c(2,3), mean)
+df <- mdf(pres, nseq, rhoseq)
+p <- plot.res.tp(df, ylim = ylim)
+p.spear <- p + ggtitle("Spearman + bootstrap") +
+               theme(legend.position = "none")
+
+# Percentage bend + bootstrap
+pres <- apply(res.pbend, c(2,3), mean)
+df <- mdf(pres, nseq, rhoseq)
+p <- plot.res.tp(df, ylim = ylim)
+p.pbend <- p + ggtitle("Perc. bend + bootstrap") +
+               theme(legend.position = "none")
+
+# Winsorized correlation + bootstrap
+pres <- apply(res.wcorr, c(2,3), mean)
+df <- mdf(pres, nseq, rhoseq)
+p <- plot.res.tp(df, ylim = ylim)
+p.wcorr <- p + ggtitle("Winsorized corr. + bootstrap") +
+               theme(legend.position = "none")
+
+list(p.pears.fish = p.pears.fish,
+     p.pears.boot = p.pears.boot,
+     p.pears.hc4 = p.pears.hc4,
+     p.spear = p.spear,
+     p.pbend = p.pbend,
+     p.wcorr = p.wcorr)
+
+}
+
+plot.all.cov <- function(ylim = c(0, 1), ...){
+
+# Pearson + bootstrap
+pres <- apply(cov.pears, c(2,3), mean)
+df <- mdf(pres, nseq, rhoseq)
+p <- plot.res.tp(df, ylim = ylim)
+p.pears <- p + ggtitle("Pearson + bootstrap") +
+                    theme(legend.position = "right") +
+                    labs(y = "Coverage prob.")
+
+# Spearman + bootstrap
+pres <- apply(cov.spear, c(2,3), mean)
+df <- mdf(pres, nseq, rhoseq)
+p <- plot.res.tp(df, ylim = ylim)
+p.spear <- p + ggtitle("Spearman + bootstrap") +
+               theme(legend.position = "none") +
+               labs(y = "Coverage prob.")
+
+# Percentage bend + bootstrap
+pres <- apply(cov.pbend, c(2,3), mean)
+df <- mdf(pres, nseq, rhoseq)
+p <- plot.res.tp(df, ylim = ylim)
+p.pbend <- p + ggtitle("Perc. bend + bootstrap") +
+               theme(legend.position = "none") +
+               labs(y = "Coverage prob.")
+
+# Winsorized correlation + bootstrap
+pres <- apply(cov.wcorr, c(2,3), mean)
+df <- mdf(pres, nseq, rhoseq)
+p <- plot.res.tp(df, ylim = ylim)
+p.wcorr <- p + ggtitle("Winsorized corr. + bootstrap") +
+               theme(legend.position = "none") +
+               labs(y = "Coverage prob.")
+
+list(p.pears = p.pears,
+     p.spear = p.spear,
+     p.pbend = p.pbend,
+     p.wcorr = p.wcorr)
+
+}
+
+plot.all.fp.g <- function(ylim = c(0, 0.2), ...){
+
+# Pearson + Fisher
+pres <- apply(res.pears.fish, c(2,3), mean)
+df <- mdf.g(pres, nseq, gseq)
+p <- plot.res.fp.g(df, ylim = ylim)
+p.pears.fish <- p + ggtitle("Pearson + Fisher") +
+                    theme(legend.position = "none")
+
+# Pearson + bootstrap
+pres <- apply(res.pears.boot, c(2,3), mean)
+df <- mdf.g(pres, nseq, gseq)
+p <- plot.res.fp.g(df, ylim = ylim)
+p.pears.boot <- p + ggtitle("Pearson + bootstrap") +
+                    theme(legend.position = c(0.3,0.78))
+
+# Pearson + HC4
+pres <- apply(res.pears.hc4, c(2,3), mean)
+df <- mdf.g(pres, nseq, gseq)
+p <- plot.res.fp.g(df, ylim = ylim)
+p.pears.hc4 <- p + ggtitle("Pearson + HC4") +
+                    theme(legend.position = "none")
+
+# Spearman + bootstrap
+pres <- apply(res.spear, c(2,3), mean)
+df <- mdf.g(pres, nseq, gseq)
+p <- plot.res.fp.g(df, ylim = ylim)
+p.spear <- p + ggtitle("Spearman + bootstrap") +
+               theme(legend.position = "none")
+
+# Percentage bend + bootstrap
+pres <- apply(res.pbend, c(2,3), mean)
+df <- mdf.g(pres, nseq, gseq)
+p <- plot.res.fp.g(df, ylim = ylim)
+p.pbend <- p + ggtitle("Perc. bend + bootstrap") +
+              theme(legend.position = "none")
+
+# Winsorized correlation + bootstrap
+pres <- apply(res.wcorr, c(2,3), mean)
+df <- mdf.g(pres, nseq, gseq)
+p <- plot.res.fp.g(df, ylim = ylim)
+p.wcorr <- p + ggtitle("Winsorized corr. + bootstrap") +
+              theme(legend.position = "none")
+
+list(p.pears.fish = p.pears.fish,
+     p.pears.boot = p.pears.boot,
+     p.pears.hc4 = p.pears.hc4,
+     p.spear = p.spear,
+     p.pbend = p.pbend,
+     p.wcorr = p.wcorr)
+
+}
+
+plot.all.tp.g <- function(ylim = c(0, 1), ...){
+
+# Pearson + Fisher
+pres <- apply(res.pears.fish, c(2,3), mean)
+df <- mdf.g(pres, nseq, gseq)
+p <- plot.res.tp.g(df, ylim = ylim)
+p.pears.fish <- p + ggtitle("Pearson + Fisher") +
+                    theme(legend.position = "right")
+
+# Pearson + bootstrap
+pres <- apply(res.pears.boot, c(2,3), mean)
+df <- mdf.g(pres, nseq, gseq)
+p <- plot.res.tp.g(df, ylim = ylim)
+p.pears.boot <- p + ggtitle("Pearson + bootstrap") +
+                    theme(legend.position = "none")
+
+# Pearson + HC4
+pres <- apply(res.pears.hc4, c(2,3), mean)
+df <- mdf.g(pres, nseq, gseq)
+p <- plot.res.tp.g(df, ylim = ylim)
+p.pears.hc4 <- p + ggtitle("Pearson + HC4") +
+                    theme(legend.position = "none")
+
+# Spearman + bootstrap
+pres <- apply(res.spear, c(2,3), mean)
+df <- mdf.g(pres, nseq, gseq)
+p <- plot.res.tp.g(df, ylim = ylim)
+p.spear <- p + ggtitle("Spearman + bootstrap") +
+               theme(legend.position = "none")
+
+# Percentage bend + bootstrap
+pres <- apply(res.pbend, c(2,3), mean)
+df <- mdf.g(pres, nseq, gseq)
+p <- plot.res.tp.g(df, ylim = ylim)
+p.pbend <- p + ggtitle("Perc. bend + bootstrap") +
+               theme(legend.position = "none")
+
+# Winsorized correlation + bootstrap
+pres <- apply(res.wcorr, c(2,3), mean)
+df <- mdf.g(pres, nseq, gseq)
+p <- plot.res.tp.g(df, ylim = ylim)
+p.wcorr <- p + ggtitle("Winsorized corr. + bootstrap") +
+               theme(legend.position = "none")
+
+list(p.pears.fish = p.pears.fish,
+     p.pears.boot = p.pears.boot,
+     p.pears.hc4 = p.pears.hc4,
+     p.spear = p.spear,
+     p.pbend = p.pbend,
+     p.wcorr = p.wcorr)
+
+}
+
+plot.all.cov.g <- function(ylim = c(0, 1), ...){
+
+# Pearson + Zou
+pres <- apply(cov.pears.zou, c(2,3), mean)
+df <- mdf.g(pres, nseq, gseq)
+p <- plot.res.tp.g(df, ylim = ylim)
+p.pears.zou <- p + ggtitle("Pearson + Zou") +
+                   theme(legend.position = "right") +
+                   labs(y = "Coverage prob.") +
+                   geom_hline(yintercept = 0.95)
+
+# Pearson + bootstrap
+pres <- apply(cov.pears, c(2,3), mean)
+df <- mdf.g(pres, nseq, gseq)
+p <- plot.res.tp.g(df, ylim = ylim)
+p.pears <- p + ggtitle("Pearson + bootstrap") +
+                    theme(legend.position = "none") +
+                    labs(y = "Coverage prob.") +
+                    geom_hline(yintercept = 0.95)
+
+# Spearman + bootstrap
+pres <- apply(cov.spear, c(2,3), mean)
+df <- mdf.g(pres, nseq, gseq)
+p <- plot.res.tp.g(df, ylim = ylim)
+p.spear <- p + ggtitle("Spearman + bootstrap") +
+               theme(legend.position = "none") +
+               labs(y = "Coverage prob.") +
+               geom_hline(yintercept = 0.95)
+
+# Percentage bend + bootstrap
+pres <- apply(cov.pbend, c(2,3), mean)
+df <- mdf.g(pres, nseq, gseq)
+p <- plot.res.tp.g(df, ylim = ylim)
+p.pbend <- p + ggtitle("Perc. bend + bootstrap") +
+               theme(legend.position = "none") +
+               labs(y = "Coverage prob.") +
+               geom_hline(yintercept = 0.95)
+
+# Winsorized correlation + bootstrap
+pres <- apply(cov.wcorr, c(2,3), mean)
+df <- mdf.g(pres, nseq, gseq)
+p <- plot.res.tp.g(df, ylim = ylim)
+p.wcorr <- p + ggtitle("Winsorized corr. + bootstrap") +
+               theme(legend.position = "none") +
+               labs(y = "Coverage prob.") +
+               geom_hline(yintercept = 0.95)
+
+list(p.pears.zou = p.pears.zou,
+     p.pears = p.pears,
+     p.spear = p.spear,
+     p.pbend = p.pbend,
+     p.wcorr = p.wcorr)
+
+}

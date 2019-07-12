@@ -1,0 +1,206 @@
+# Compute Spearman's rho
+spear <- function(x,y){
+corv <- cor(rank(x),rank(y))
+corv
+}
+
+# Fisher's z test of correlations
+fisher.cor.test <- function(r1, r2, n1, n2){
+  z1 <- atanh(r1)
+  z2 <- atanh(r2)
+  zobs <- (z1-z2) / sqrt( 1 / (n1-3) + 1 / (n2-3) )
+  pval <- 2 * pnorm(-abs(zobs))
+  # list(pval = pval, z = zobs)
+  pval
+}
+
+# Zou's 2007 method to compare two Pearson's correlation coefficients.
+# Implementation from Thom Baguley
+# https://seriousstats.wordpress.com/2012/02/05/comparing-correlations/
+rz.ci <- function(r, N, conf.level = 0.95) {
+    zr.se <- 1/(N - 3)^0.5
+    moe <- qnorm(1 - (1 - conf.level)/2) * zr.se
+    zu <- atanh(r) + moe
+    zl <- atanh(r) - moe
+    tanh(c(zl, zu))
+}
+
+r.ind.ci <- function(r1, r2, n1, n2=n1, conf.level = 0.95) {
+    L1 <- rz.ci(r1, n1, conf.level = conf.level)[1]
+    U1 <- rz.ci(r1, n1, conf.level = conf.level)[2]
+    L2 <- rz.ci(r2, n2, conf.level = conf.level)[1]
+    U2 <- rz.ci(r2, n2, conf.level = conf.level)[2]
+    lower <- r1 - r2 - ((r1 - L1)^2 + (U2 - r2)^2)^0.5
+    upper <- r1 - r2 + ((U1 - r1)^2 + (r2 - L2)^2)^0.5
+    c(lower, upper)
+}
+
+# Percentage bend correlation
+pbcor<-function(x,y,beta=.2){
+#   Compute the percentage bend correlation between x and y.
+#
+#   beta is the bending constant for omega sub N.
+#
+if(length(x)!=length(y))stop("The vectors do not have equal lengths")
+m1=cbind(x,y)
+m1<-elimna(m1)
+nval=nrow(m1)
+x<-m1[,1]
+y<-m1[,2]
+#  Have eliminated missing values
+temp<-sort(abs(x-median(x)))
+omhatx<-temp[floor((1-beta)*length(x))]
+temp<-sort(abs(y-median(y)))
+omhaty<-temp[floor((1-beta)*length(y))]
+a<-(x-pbos(x,beta))/omhatx
+b<-(y-pbos(y,beta))/omhaty
+a<-ifelse(a<=-1,-1,a)
+a<-ifelse(a>=1,1,a)
+b<-ifelse(b<=-1,-1,b)
+b<-ifelse(b>=1,1,b)
+pbcor<-sum(a*b)/sqrt(sum(a^2)*sum(b^2))
+test<-pbcor*sqrt((length(x) - 2)/(1 - pbcor^2))
+sig<-2*(1 - pt(abs(test),length(x)-2))
+list(cor=pbcor,test=test,p.value=sig,n=nval)
+}
+
+# Modified to return only correlation coefficient
+pbcor.light<-function(x, y, beta=.2){
+#   Compute the percentage bend correlation between x and y.
+#
+#   beta is the bending constant for omega sub N.
+#
+nval <- length(x)
+temp <- sort(abs(x-median(x)))
+omhatx <- temp[floor((1-beta)*length(x))]
+temp <- sort(abs(y-median(y)))
+omhaty <- temp[floor((1-beta)*length(y))]
+a <- (x-pbos(x,beta))/omhatx
+b <- (y-pbos(y,beta))/omhaty
+a <- ifelse(a<=-1,-1,a)
+a <- ifelse(a>=1,1,a)
+b <- ifelse(b<=-1,-1,b)
+b <- ifelse(b>=1,1,b)
+pbcor <- sum(a*b)/sqrt(sum(a^2)*sum(b^2))
+pbcor
+}
+
+pbos<-function(x,beta=.2){
+#
+#    Compute the one-step percentage bend measure of location
+#
+#
+temp<-sort(abs(x-median(x)))
+omhatx<-temp[floor((1-beta)*length(x))]
+psi<-(x-median(x))/omhatx
+i1<-length(psi[psi<(-1)])
+i2<-length(psi[psi>1])
+sx<-ifelse(psi<(-1),0,x)
+sx<-ifelse(psi>1,0,sx)
+pbos<-(sum(sx)+omhatx*(i2-i1))/(length(x)-i1-i2)
+pbos
+}
+
+# Winsorized correlation
+wincor<-function(x,y=NULL,tr=.2){
+#   Compute the Winsorized correlation between x and y.
+#
+#   tr is the amount of Winsorization
+#   This function also returns the Winsorized covariance
+#
+#    Pairwise deletion of missing values is performed.
+#
+#   x is a vector, or it can be a matrix with two columns when y=NULL
+#
+if(is.null(y[1])){
+if(ncol(x)>2)stop('Two variables only; for more than two use winall')
+y=x[,2]
+x=x[,1]
+}
+sig<-NA
+if(length(x)!=length(y))stop("Lengths of vectors are not equal")
+m1=cbind(x,y)
+m1<-elimna(m1)
+nval=nrow(m1)
+x<-m1[,1]
+y<-m1[,2]
+g<-floor(tr*length(x))
+xvec<-winval(x,tr)
+yvec<-winval(y,tr)
+wcor<-cor(xvec,yvec)
+wcov<-var(xvec,yvec)
+if(sum(x==y)!=length(x)){
+test<-wcor*sqrt((length(x)-2)/(1.-wcor^2))
+sig<-2*(1-pt(abs(test),length(x)-2*g-2))
+}
+list(cor=wcor,cov=wcov,p.value=sig,n=nval)
+}
+
+# Modified to return only correlation coefficient
+wincor.light <- function(x, y, tr=.2, alpha = 0.05){
+#   Compute the Winsorized correlation between x and y.
+#   tr is the amount of Winsorization
+#   x and y are vectors
+#
+sig <- NA
+nval <- length(x)
+g <- floor(tr*length(x))
+xvec <- winval(x,tr)
+yvec <- winval(y,tr)
+wcor <- cor(xvec,yvec)
+wcor
+}
+
+winval<-function(x,tr=.2){
+#
+#  Winsorize the data in the vector x.
+#  tr is the amount of Winsorization which defaults to .2.
+#
+#  This function is used by several other functions that come with this book.
+#
+y<-sort(x)
+n<-length(x)
+ibot<-floor(tr*n)+1
+itop<-length(x)-ibot+1
+xbot<-y[ibot]
+xtop<-y[itop]
+winval<-ifelse(x<=xbot,xbot,x)
+winval<-ifelse(winval>=xtop,xtop,winval)
+winval
+}
+
+#  Compute correlation for x[isub] and y[isub]
+#  isub is a vector of length n,
+#  a bootstrap sample from the sequence of integers
+#  1, 2, 3, ..., n
+spearboot<-function(isub,x,y){
+corbsub <- spear(x[isub],y[isub])
+corbsub
+}
+
+#  Compute correlation for x[isub] and y[isub]
+#  isub is a vector of length n,
+#  a bootstrap sample from the sequence of integers
+#  1, 2, 3, ..., n
+pearsboot<-function(isub,x,y){
+corbsub <- cor(x[isub],y[isub])
+corbsub
+}
+
+#  Compute correlation for x[isub] and y[isub]
+#  isub is a vector of length n,
+#  a bootstrap sample from the sequence of integers
+#  1, 2, 3, ..., n
+wincorboot<-function(isub,x,y){
+corbsub <- wincor.light(x[isub],y[isub])
+corbsub
+}
+
+#  Compute correlation for x[isub] and y[isub]
+#  isub is a vector of length n,
+#  a bootstrap sample from the sequence of integers
+#  1, 2, 3, ..., n
+pbcorboot<-function(isub,x,y){
+corbsub <- pbcor.light(x[isub],y[isub])
+corbsub
+}
