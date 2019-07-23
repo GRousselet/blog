@@ -3,7 +3,7 @@ Comparison of independent correlations: power in the normal case for Pearson's c
 Guillaume A. Rousselet
 2019-07-23
 
-We look at confidence interval coverage for the difference between Pearsons' correlations using Fisher's *r-to-z* transform. Simulations with 4,000 iterations. Sampling is from a normal bivariate distribution (*g* = *h* = 0). We vary the sampling size *n*, *rho1* and the difference between *rho1* and *rho2*. The goal is to illustrate the very large numbers of trials required to detect differences between independent correlation coefficients.
+We look at confidence interval coverage for the difference between Pearsons' correlations using Fisher's *r-to-z* transform. Simulations with 10,000 iterations. Sampling is from a normal bivariate distribution (*g* = *h* = 0). We vary the sampling size *n*, *rho1* and the difference between *rho1* and *rho2*. The goal is to illustrate the very large numbers of trials required to detect differences between independent correlation coefficients.
 
 Dependencies
 ============
