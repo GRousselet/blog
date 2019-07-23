@@ -14,7 +14,7 @@ output:
   #   toc_depth: 2
 ---
 
-We look at confidence interval coverage for the difference between Pearsons' correlations using Fisher's *r-to-z* transform. Simulations with 10,000 iterations. Sampling is from a normal bivariate distribution ($g = h = 0$). We vary the sampling size *n*, *rho1* and the difference between *rho1* and *rho2*. The goal is to illustrate the very large numbers of trials required to detect differences between independent correlation coefficients.
+We look at the proportion of true positives (power) for the difference between Pearsons' correlations using Fisher's *r-to-z* transform. Simulations with 10,000 iterations. Sampling is from a normal bivariate distribution ($g = h = 0$). We vary the sampling size *n*, *rho1* and the difference between *rho1* and *rho2*. The goal is to illustrate the very large numbers of trials required to detect differences between independent correlation coefficients.
 
 # Dependencies
 ```{r}
