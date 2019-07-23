@@ -3,6 +3,7 @@ R code and notebook for my [blog post][1] on comparing two independent Pearsonâ€
 R notebooks to reproduce all the figures:
 - `g&h.Rmd`
 - `compcorr.Rmd`  
+- [normpower](docs/normpower.md)
 
 Extra functions not available in packages are defined in text files in the `functions` folder.
 
