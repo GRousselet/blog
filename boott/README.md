@@ -1,4 +1,4 @@
-R code and notebook for my [blog post][1] on comparing the bootstrap-t technique:
+R code and notebook for my [blog post][1] on the bootstrap-t technique:
 
 R notebooks to reproduce all the figures:
 - [ptb](docs/ptb.md) (first part)
