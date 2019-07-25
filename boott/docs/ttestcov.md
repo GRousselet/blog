@@ -143,7 +143,7 @@ for(S in 1:nsim){ # simulation loop
     }
   }
   # Percentile bootstrap =======================
-   ci <- quantile(apply(matrix(sample(samp, n*nboot, replace=TRUE), nrow=nboot), 1, mean, trim = tr), probs = c(0.025, 0.975), type = 6)
+   ci <- quantile(apply(matrix(sample(samp, nsamp*nboot, replace=TRUE), nrow=nboot), 1, mean, trim = tr), probs = c(0.025, 0.975), type = 6)
   ci.all[S,2,] <- ci
   ci.cov[S,2] <- cover(ci, pop.m) # CI includes population value?
   ci.wid[S,2] <- ci[2] - ci[1]
@@ -193,7 +193,8 @@ beep(8)
 
 ## Check averages across simulations
 
-The coverage is close to nominal (95%) for every method.
+The coverage is close to nominal (95%) for every method, although
+coverage for the percentile bootstrap is slightly too low, at 93.5%.
 
 ``` r
 load(file = "./data/cov_test_g0h0.RData")
@@ -405,7 +406,7 @@ for(S in 1:nsim){ # simulation loop
     }
   }
   # Percentile bootstrap =======================
-   ci <- quantile(apply(matrix(sample(samp, n*nboot, replace=TRUE), nrow=nboot), 1, mean, trim = tr), probs = c(0.025, 0.975), type = 6)
+   ci <- quantile(apply(matrix(sample(samp, nsamp*nboot, replace=TRUE), nrow=nboot), 1, mean, trim = tr), probs = c(0.025, 0.975), type = 6)
   ci.all[S,2,] <- ci
   ci.cov[S,2] <- cover(ci, pop.m) # CI includes population value?
   ci.wid[S,2] <- ci[2] - ci[1]
@@ -678,7 +679,7 @@ for(S in 1:nsim){ # simulation loop
     }
   }
   # Percentile bootstrap =======================
-   ci <- quantile(apply(matrix(sample(samp, n*nboot, replace=TRUE), nrow=nboot), 1, mean, trim = tr), probs = c(0.025, 0.975), type = 6)
+   ci <- quantile(apply(matrix(sample(samp, nsamp*nboot, replace=TRUE), nrow=nboot), 1, mean, trim = tr), probs = c(0.025, 0.975), type = 6)
   ci.all[S,2,] <- ci
   ci.cov[S,2] <- cover(ci, pop.m) # CI includes population value?
   ci.wid[S,2] <- ci[2] - ci[1]
