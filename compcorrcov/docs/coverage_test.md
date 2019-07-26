@@ -1,7 +1,7 @@
 Comparison of independent correlations: confidence interval coverage
 ================
 Guillaume A. Rousselet
-2019-07-12
+2019-07-26
 
 We look at confidence interval coverage for the difference between
 Pearsons’ correlations using Zou’s method (2007) and the percentile
@@ -68,7 +68,7 @@ for(R in 1:nr){
   set.seed(21) # set seed inside R loop to allow direct comparisons
   # (numbers are the same except for the correlation)
   rho <- rhoseq[R]
-  print(paste("sim diff 0.1, g=0, h=0, rho =",rho))
+  print(paste("sim diff 0.1, g=0, h=0, rho=",rho))
   cmat1 <- matrix(c(1,rho,rho,1),2,2)
   cmat2 <- matrix(c(1,rho+es,rho+es,1),2,2)
   for(S in 1:nsim){
@@ -405,7 +405,9 @@ for(R in 1:nr){
   set.seed(21) # set seed inside R loop to allow direct comparisons
   # (numbers are the same except for the correlation)
   rho <- rhoseq[R]
-  print(paste("sim diff 0.1, g=0, h=0, rho =",rho))
+  print(paste0("sim diff ",es," g=",g," h=",h," rho=",rho))
+  # adjust rho to get desired population value after g&h transformation
+  rho <- rngh.sub(min(nseq),g,h,rho)$rho.adjusted
   cmat1 <- matrix(c(1,rho,rho,1),2,2)
   cmat2 <- matrix(c(1,rho+es,rho+es,1),2,2)
   for(S in 1:nsim){
@@ -528,7 +530,7 @@ on.
 load("./data/diff01_g1h0_varyrho_covtest.RData")
 pres <- apply(cov.pears.zou, c(2,3), mean)
 df <- mdf(pres, nseq, rhoseq)
-p <- plot.res.cov(df, ylim = c(0.45, 1)) + ggtitle("Pearson + Zou") + 
+p <- plot.res.cov(df, ylim = c(0.35, 1)) + ggtitle("Pearson + Zou") + 
       theme(legend.position = "none")
 p
 ```
@@ -544,7 +546,7 @@ pA <- p
 ``` r
 pres <- apply(cov.pears.boot, c(2,3), mean)
 df <- mdf(pres, nseq, rhoseq)
-p <- plot.res.cov(df, ylim = c(0.45, 1)) + ggtitle("Pearson + bootstrap") + 
+p <- plot.res.cov(df, ylim = c(0.35, 1)) + ggtitle("Pearson + bootstrap") + 
       theme(legend.position = c(0.15, 0.4))
 p
 ```
@@ -560,7 +562,7 @@ pB <- p
 ``` r
 pres <- apply(cov.spear, c(2,3), mean)
 df <- mdf(pres, nseq, rhoseq)
-p <- plot.res.cov(df, ylim = c(0.45, 1)) + ggtitle("Spearman + bootstrap") + 
+p <- plot.res.cov(df, ylim = c(0.35, 1)) + ggtitle("Spearman + bootstrap") + 
       theme(legend.position = "none")
 p
 ```
@@ -744,7 +746,9 @@ for(R in 1:nr){
   set.seed(21) # set seed inside R loop to allow direct comparisons
   # (numbers are the same except for the correlation)
   rho <- rhoseq[R]
-  print(paste("sim diff 0.1, g=0, h=0, rho =",rho))
+  print(paste0("sim diff ",es," g=",g," h=",h," rho =",rho))
+  # adjust rho to get desired population value after g&h transformation
+  rho <- rngh.sub(min(nseq),g,h,rho)$rho.adjusted
   cmat1 <- matrix(c(1,rho,rho,1),2,2)
   cmat2 <- matrix(c(1,rho+es,rho+es,1),2,2)
   for(S in 1:nsim){
@@ -1008,11 +1012,9 @@ ng <- length(gseq)
 nseq <- seq(50, 500, 50)
 nmax <- max(nseq)
 nsim <- 4000
-rho = 0.3
+rho.pop <- 0.3
 es <- 0.2 # effect size
 h <- 0
-cmat1 <- matrix(c(1,rho,rho,1),2,2)
-cmat2 <- matrix(c(1,rho+es,rho+es,1),2,2)
 alpha <- .05
 nboot <- 599
 
@@ -1034,7 +1036,13 @@ for(G in 1:ng){
   set.seed(21) # set seed inside R loop to allow direct comparisons
   # (numbers are the same except for the correlation)
   g <- gseq[G]
-  print(paste("sim diff 0.1, g=0, h=0, rho =",rho))
+  rho <- rho.pop
+  print(paste0("sim diff ",es," g=",g," h=",h," rho =",rho))
+  # adjust rho to get desired population value after g&h transformation
+  rho <- rngh.sub(min(nseq),g,h,rho)$rho.adjusted
+  cmat1 <- matrix(c(1,rho,rho,1),2,2)
+  cmat2 <- matrix(c(1,rho+es,rho+es,1),2,2)
+  
   for(S in 1:nsim){
     if(S %% 500 == 0){print(paste0("sim ",S," / ",nsim,"..."))}
     # generate max n sample
@@ -1340,11 +1348,9 @@ ng <- length(gseq)
 nseq <- seq(50, 500, 50)
 nmax <- max(nseq)
 nsim <- 4000
-rho = 0.3
+rho.pop = 0.3
 es <- 0.2 # effect size
 h <- 0.2
-cmat1 <- matrix(c(1,rho,rho,1),2,2)
-cmat2 <- matrix(c(1,rho+es,rho+es,1),2,2)
 alpha <- .05
 nboot <- 599
 
@@ -1366,7 +1372,13 @@ for(G in 1:ng){
   set.seed(21) # set seed inside R loop to allow direct comparisons
   # (numbers are the same except for the correlation)
   g <- gseq[G]
-  print(paste0("sim diff 0.2, rho=0.3, h=0.2, g=",g))
+  rho <- rho.pop
+  print(paste0("sim diff ",es," g=",g," h=",h," rho=",rho))
+  # adjust rho to get desired population value after g&h transformation
+  rho <- rngh.sub(min(nseq),g,h,rho)$rho.adjusted
+  cmat1 <- matrix(c(1,rho,rho,1),2,2)
+  cmat2 <- matrix(c(1,rho+es,rho+es,1),2,2)
+
   for(S in 1:nsim){
     if(S %% 500 == 0){print(paste0("sim ",S," / ",nsim,"..."))}
     # generate max n sample
@@ -1481,7 +1493,7 @@ save(cov.spear, cov.pears.boot, cov.pears.zou,
 load("./data/rho03_diff02_h02_vg_covtest.RData")
 pres <- apply(cov.pears.zou, c(2,3), mean)
 df <- mdf.g(pres, nseq, gseq)
-p <- plot.res.cov.g(df, ylim = c(0.45, 1)) + ggtitle("Pearson + Zou") +
+p <- plot.res.cov.g(df, ylim = c(0.4, 1)) + ggtitle("Pearson + Zou") +
       theme(legend.position = "none")
 p
 ```
@@ -1497,7 +1509,7 @@ pA <- p
 ``` r
 pres <- apply(cov.pears.boot, c(2,3), mean)
 df <- mdf.g(pres, nseq, gseq)
-p <- plot.res.cov.g(df, ylim = c(0.45, 1)) + ggtitle("Pearson + bootstrap") +
+p <- plot.res.cov.g(df, ylim = c(0.4, 1)) + ggtitle("Pearson + bootstrap") +
       theme(legend.position = "none")
 p
 ```
@@ -1513,7 +1525,7 @@ pB <- p
 ``` r
 pres <- apply(cov.spear, c(2,3), mean)
 df <- mdf.g(pres, nseq, gseq)
-p <- plot.res.cov.g(df, ylim = c(0.45, 1)) + ggtitle("Spearman + bootstrap") +
+p <- plot.res.cov.g(df, ylim = c(0.4, 1)) + ggtitle("Spearman + bootstrap") +
       theme(legend.position = c(0.2, 0.5)) +
         guides(colour=guide_legend(ncol=2, override.aes = list(size = 3)))
 p
