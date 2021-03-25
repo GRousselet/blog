@@ -5,35 +5,42 @@ Guillaume A. Rousselet
 
 -   [Dependencies](#dependencies)
 -   [Check `cor()` function](#check-cor-function)
-    -   [n = 10](#n-10)
-    -   [n = 100](#n-100)
--   [Fake correlation](#fake-correlation)
--   [Correlation estimates as a function of sample size](#correlation-estimates-as-a-function-of-sample-size)
+    -   [n = 10](#n--10)
+    -   [n = 100](#n--100)
+-   [Correlations: samples from null
+    population](#correlations-samples-from-null-population)
+-   [Correlation estimates as a function of sample
+    size](#correlation-estimates-as-a-function-of-sample-size)
     -   [Parameters](#parameters)
     -   [Generate data](#generate-data)
     -   [Plot kernel density estimates](#plot-kernel-density-estimates)
     -   [Precision](#precision)
--   [Probability to replicate an effect](#probability-to-replicate-an-effect)
+-   [Probability to replicate an
+    effect](#probability-to-replicate-an-effect)
     -   [Parameters](#parameters-1)
     -   [Generate data](#generate-data-1)
     -   [Illustrate results](#illustrate-results)
--   [Correlation estimates as a function of rho for fixed n](#correlation-estimates-as-a-function-of-rho-for-fixed-n)
+-   [Correlation estimates as a function of rho for fixed
+    n](#correlation-estimates-as-a-function-of-rho-for-fixed-n)
     -   [Parameters](#parameters-2)
     -   [Generate data](#generate-data-2)
-    -   [Plot kernel density estimates](#plot-kernel-density-estimates-1)
+    -   [Plot kernel density
+        estimates](#plot-kernel-density-estimates-1)
     -   [Precision](#precision-1)
--   [Correlation estimates as a function of sample size (rho=0.4)](#correlation-estimates-as-a-function-of-sample-size-rho0.4)
+-   [Correlation estimates as a function of sample size
+    (rho=0.4)](#correlation-estimates-as-a-function-of-sample-size-rho04)
     -   [Parameters](#parameters-3)
     -   [Generate data](#generate-data-3)
-    -   [Plot kernel density estimates](#plot-kernel-density-estimates-2)
+    -   [Plot kernel density
+        estimates](#plot-kernel-density-estimates-2)
     -   [Precision](#precision-2)
--   [Probability to replicate an effect (rho=0.4)](#probability-to-replicate-an-effect-rho0.4)
+-   [Probability to replicate an effect
+    (rho=0.4)](#probability-to-replicate-an-effect-rho04)
     -   [Parameters](#parameters-4)
     -   [Generate data](#generate-data-4)
     -   [Illustrate results](#illustrate-results-1)
 
-Dependencies
-============
+# Dependencies
 
 ``` r
 # Code to generate data from g-and-h distributions.
@@ -44,25 +51,23 @@ Dependencies
 # Wilcox, R.R. (2012) 
 # Introduction to robust estimation and hypothesis testing. 
 # Academic Press, San Diego, CA.
-source('./functions/gh.txt')
-source('./functions/akerd.txt')
 library(ggplot2)
 library(tibble)
-```
-
-    ## Warning: package 'tibble' was built under R version 3.4.3
-
-``` r
 library(viridis)
 ```
 
     ## Loading required package: viridisLite
 
-Check `cor()` function
-======================
+``` r
+source('./functions/gh.txt')
+source('./functions/akerd.txt')
+source('./functions/theme_gar.txt')
+source("./functions/gengh.txt") # John Ruscio's algorithm to generate multivariate non-normal data
+```
 
-n = 10
-------
+# Check `cor()` function
+
+## n = 10
 
 ``` r
 set.seed(21)
@@ -80,10 +85,9 @@ allcorr <- res[upper.tri(res, diag = FALSE)]
 hist(allcorr)
 ```
 
-![](corr_sim_files/figure-markdown_github/unnamed-chunk-2-1.png)
+![](corr_sim_files/figure-gfm/unnamed-chunk-2-1.png)<!-- -->
 
-n = 100
--------
+## n = 100
 
 ``` r
 set.seed(21)
@@ -97,67 +101,79 @@ allcorr <- res[upper.tri(res, diag = FALSE)]
 hist(allcorr, xlim = c(-1, 1))
 ```
 
-![](corr_sim_files/figure-markdown_github/unnamed-chunk-3-1.png)
+![](corr_sim_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
 
-Fake correlation
-================
+# Correlations: samples from null population
+
+Generate 6 correlations to make 2 x 3 figure.
 
 ``` r
-set.seed(7)
-n <- 30 # sample size
-g <- 0
-h <- 0
+set.seed(21)
+n <- 20 # sample size
 rho <- 0
-rth <- 0.6 # r threshold
+ncor <- 6
 p <- 2
-gotit <- 0
 
-while(gotit == 0){
-  data <- rmul(n,p=p,cmat=diag(rep(1,p)),rho=rho,mar.fun=ghdist,OP=TRUE,g=g,h=h)
-  res <- cor(data, method = "pearson")
-  if(res[1,2] > rth){
-    gotit <- 1
-  }
+# parameters for bivariate g-and-h populations
+# set parameter g to 0 to create an unrealistic normal population
+npop <- 20000 # population size
+g <- 0.5 # sample from skewed bivariate population
+h <- 0
+pop <- gengh(n.cases = npop, n.variables = 2, g = g, h = h, rho = rho, corr.type = "pearson")
+
+res.raw <- array(data = NA, dim = c(n, 2, ncor))
+res.cor <- matrix(data = NA, nrow = ncor, ncol = 4)
+
+for(C in 1:ncor){
+   # res.raw[,,C] <- rmul(n,p=p,cmat=diag(rep(1,p)),rho=rho,mar.fun=ghdist,OP=TRUE,g=g,h=h)
+  # sample with replacement from population
+  id <- sample(npop, size = n, replace = TRUE) 
+  res.raw[,,C] <- pop[id,]
+   tmp <- cor.test(res.raw[,1,C], res.raw[,2,C], method = "pearson")
+   res.cor[C,1] <- tmp$estimate # correlation coefficient
+   res.cor[C,2] <- tmp$conf.int[1] # CI lower bound
+   res.cor[C,3] <- tmp$conf.int[2] # CI upper bound
+   res.cor[C,4] <- tmp$p.value # p value
 }
 
-df <- tibble(x=data[,1], y=data[,2])
-ggplot(data=df, aes(x=x, y=y)) + theme_classic() +
+# make data frame
+df <- tibble(x=as.vector(res.raw[,1,]), 
+             y=as.vector(res.raw[,2,]),
+             condition = factor(rep(c(1:ncor), each = n)))
+
+# rename levels to make titles
+levels(df$condition) <- c(paste0("r=",round(res.cor[1,1],digits=2)," [",round(res.cor[1,2],digits=2),", ",round(res.cor[1,3],digits=2),"], p=",round(res.cor[1,4],digits=3)), 
+                          paste0("r=",round(res.cor[2,1],digits=2)," [",round(res.cor[2,2],digits=2),", ",round(res.cor[2,3],digits=2),"], p=",round(res.cor[2,4],digits=3)), 
+                          paste0("r=",round(res.cor[3,1],digits=2)," [",round(res.cor[3,2],digits=2),", ",round(res.cor[3,3],digits=2),"], p=",round(res.cor[3,4],digits=3)), 
+                          paste0("r=",round(res.cor[4,1],digits=2)," [",round(res.cor[4,2],digits=2),", ",round(res.cor[4,3],digits=2),"], p=",round(res.cor[4,4],digits=3)), 
+                          paste0("r=",round(res.cor[5,1],digits=2)," [",round(res.cor[5,2],digits=2),", ",round(res.cor[5,3],digits=2),"], p=",round(res.cor[5,4],digits=3)), 
+                          paste0("r=",round(res.cor[6,1],digits=2)," [",round(res.cor[6,2],digits=2),", ",round(res.cor[6,3],digits=2),"], p=",round(res.cor[6,4],digits=3)))
+
+ggplot(data=df, aes(x=x, y=y)) + theme_gar +
   geom_point(shape=21, size=3, fill="yellow", alpha=0.8) +
-  geom_smooth(method=lm) +
-  coord_cartesian(xlim=c(-2.5, 2.5), ylim=c(-2.5, 2.5)) +
-  theme(plot.title = element_text(size=20),
-        axis.title.x = element_text(size = 18),
+  geom_smooth(method=lm, se = FALSE) +
+  # coord_cartesian(xlim=c(-2.5, 2.5), ylim=c(-2.5, 2.5)) +
+  theme(axis.title.x = element_text(size = 18),
         axis.text = element_text(size = 14, colour="black"),
         axis.title.y = element_text(size = 18),
-        legend.key.width = unit(1.5,"cm"),
-        legend.position = "right",
-        legend.text=element_text(size = 16),
-        legend.title=element_text(size = 18),
+        strip.text = element_text(size = 10),
         panel.background = element_rect(fill="grey95")) +
   labs(x = "Variable 1", y = "Variable 2") +
-  # guides(colour = guide_legend(override.aes = list(size=3), # make thicker legend lines
-  #   title = "Precision \n(within +/-)")) + # change legend title
-  ggtitle(paste0("Nice looking correlation?! (r=",round(res[1,2],digits = 3),")")) 
+  facet_wrap(vars(condition))
 ```
 
-![](corr_sim_files/figure-markdown_github/unnamed-chunk-4-1.png)
+    ## `geom_smooth()` using formula 'y ~ x'
 
-``` r
-p
-```
-
-    ## [1] 2
+![](corr_sim_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
 
 ``` r
 # save figure
-ggsave(filename='./figures/figure_random_correlation.png',width=7,height=5) 
+# ggsave(filename='./figures/figure_random_correlation.png',width=7,height=5) 
 ```
 
-Correlation estimates as a function of sample size
-==================================================
+# Correlation estimates as a function of sample size
 
-Parameters
-----------
+## Parameters
 
 ``` r
 nseq <- c(seq(10, 100, 10), 150, 200, 300) # sample sizes
@@ -173,8 +189,7 @@ p <- 200 # 19900 correlations - sum(upper.tri(matrix(0, p, p), diag = FALSE))
 Nsim <- 10000
 ```
 
-Generate data
--------------
+## Generate data
 
 ``` r
 set.seed(21)
@@ -207,8 +222,7 @@ save(res.cor, res.pre,
      file = "./data/samp_dist.RData")
 ```
 
-Plot kernel density estimates
------------------------------
+## Plot kernel density estimates
 
 ``` r
 # get data
@@ -225,7 +239,7 @@ df[[2]] <- as.character(df[[2]])
 df[[2]] <- factor(df[[2]], levels=unique(df[[2]]))
 
 # make plot
-p <- ggplot(df, aes(x, Density)) + theme_classic() +
+p <- ggplot(df, aes(x, Density)) + theme_gar +
           geom_line(aes(colour = SS), size = 1)  + 
           scale_color_viridis(discrete = TRUE) + 
           theme(axis.title.x = element_text(size = 18),
@@ -246,15 +260,14 @@ p <- ggplot(df, aes(x, Density)) + theme_classic() +
 p
 ```
 
-![](corr_sim_files/figure-markdown_github/unnamed-chunk-7-1.png)
+![](corr_sim_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
 
 ``` r
 # save figure
-ggsave(filename='./figures/figure_sampling_distributions.png',width=9,height=5) 
+# ggsave(filename='./figures/figure_sampling_distributions.png',width=9,height=5) 
 ```
 
-Precision
----------
+## Precision
 
 ``` r
 df <- tibble(`Proportion` = as.vector(res.pre),
@@ -277,7 +290,7 @@ df.seg4 <- tibble(x=tmp.pos, xend=tmp.pos,
                   y=0.9, yend=0)
 
 # make plot
-p <- ggplot(df, aes(x=Size, y=Proportion)) + theme_classic() +
+p <- ggplot(df, aes(x=Size, y=Proportion)) + theme_gar +
   # geom_abline(intercept=0.7, slope=0, colour="grey20") +
   geom_segment(data = df.seg1, aes(x=x, y=y, xend=xend, yend=yend)) +
   geom_segment(data = df.seg2, aes(x=x, y=y, xend=xend, yend=yend), 
@@ -307,24 +320,26 @@ p <- ggplot(df, aes(x=Size, y=Proportion)) + theme_classic() +
 p
 ```
 
-![](corr_sim_files/figure-markdown_github/unnamed-chunk-8-1.png)
+![](corr_sim_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
 
 ``` r
 # save figure
-ggsave(filename='./figures/figure_precision.png',width=9,height=5) 
+# ggsave(filename='./figures/figure_precision.png',width=9,height=5) 
 ```
 
-For 70% of estimates to be within +/- 0.1 of the true correlation value (between -0.1 and 0.1), we need at least 109 observations.
+For 70% of estimates to be within +/- 0.1 of the true correlation value
+(between -0.1 and 0.1), we need at least 109 observations.
 
-For 90% of estimates to be within +/- 0.2 of the true correlation value (between -0.2 and 0.2), we need at least 70 observations.
+For 90% of estimates to be within +/- 0.2 of the true correlation value
+(between -0.2 and 0.2), we need at least 70 observations.
 
-Probability to replicate an effect
-==================================
+# Probability to replicate an effect
 
-For a given precision, what is the probability to observe similar effects in two consecutive experiments? In other words, what is the probability that two measurements differ by at most a certain amount?
+For a given precision, what is the probability to observe similar
+effects in two consecutive experiments? In other words, what is the
+probability that two measurements differ by at most a certain amount?
 
-Parameters
-----------
+## Parameters
 
 ``` r
 nseq <- c(seq(10, 100, 10), 150, 200, 300) # sample sizes
@@ -338,8 +353,7 @@ p <- 500 # 124750 correlations - sum(upper.tri(matrix(0, p, p), diag = FALSE))
 Nsim <- 10000
 ```
 
-Generate data
--------------
+## Generate data
 
 ``` r
 set.seed(21)
@@ -374,8 +388,7 @@ save(res.rep,
      file = "./data/replication.RData")
 ```
 
-Illustrate results
-------------------
+## Illustrate results
 
 ``` r
 load("./data/replication.RData")
@@ -399,7 +412,7 @@ df.seg2 <- tibble(x=tmp.pos, xend=tmp.pos,
 #                   y=0.9, yend=0)
 
 # make plot
-p <- ggplot(df, aes(x=Size, y=Proportion)) + theme_classic() +
+p <- ggplot(df, aes(x=Size, y=Proportion)) + theme_gar +
   # geom_abline(intercept=0.7, slope=0, colour="grey20") +
   geom_segment(data = df.seg1, aes(x=x, y=y, xend=xend, yend=yend)) +
   geom_segment(data = df.seg2, aes(x=x, y=y, xend=xend, yend=yend),
@@ -429,24 +442,24 @@ p <- ggplot(df, aes(x=Size, y=Proportion)) + theme_classic() +
 p
 ```
 
-![](corr_sim_files/figure-markdown_github/unnamed-chunk-11-1.png)
+![](corr_sim_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
 
 ``` r
 # save figure
-ggsave(filename='./figures/figure_replication.png',width=9,height=5) 
+# ggsave(filename='./figures/figure_replication.png',width=9,height=5) 
 ```
 
-For 80% of replications to be at most 0.2 apart, we need at least 83 observations.
+For 80% of replications to be at most 0.2 apart, we need at least 83
+observations.
 
 What happens when there is an effect?
 
-Correlation estimates as a function of rho for fixed n
-======================================================
+# Correlation estimates as a function of rho for fixed n
 
-For a given sample size, estimate correlations for different Pearson's population (rho) correlations.
+For a given sample size, estimate correlations for different Pearson’s
+population (rho) correlations.
 
-Parameters
-----------
+## Parameters
 
 ``` r
 n <- 30 # sample size
@@ -463,8 +476,7 @@ p <- 200 # 19900 correlations - sum(upper.tri(matrix(0, p, p), diag = FALSE))
 Nsim <- 10000
 ```
 
-Generate data
--------------
+## Generate data
 
 ``` r
 set.seed(666)
@@ -497,8 +509,7 @@ save(res.cor, res.pre,
      file = "./data/samp_dist_rho.RData")
 ```
 
-Plot kernel density estimates
------------------------------
+## Plot kernel density estimates
 
 ``` r
 # get data
@@ -515,7 +526,7 @@ df[[2]] <- as.character(df[[2]])
 df[[2]] <- factor(df[[2]], levels=unique(df[[2]]))
 
 # make plot
-p <- ggplot(df, aes(x, Density)) + theme_classic() +
+p <- ggplot(df, aes(x, Density)) + theme_gar +
           geom_line(aes(colour = RHO), size = 1)  + 
           scale_color_viridis(discrete = TRUE) + 
           theme(axis.title.x = element_text(size = 18),
@@ -536,15 +547,14 @@ p <- ggplot(df, aes(x, Density)) + theme_classic() +
 p
 ```
 
-![](corr_sim_files/figure-markdown_github/unnamed-chunk-14-1.png)
+![](corr_sim_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
 
 ``` r
 # save figure
-ggsave(filename='./figures/figure_sampling_distributions_rho.png',width=9,height=5) 
+# ggsave(filename='./figures/figure_sampling_distributions_rho.png',width=9,height=5) 
 ```
 
-Precision
----------
+## Precision
 
 ``` r
 df <- tibble(`Proportion` = as.vector(res.pre),
@@ -567,7 +577,7 @@ df$Precision <- factor(df$Precision, levels=unique(df$Precision))
 #                   y=0.9, yend=0)
 
 # make plot
-p <- ggplot(df, aes(x=Rho, y=Proportion)) + theme_classic() +
+p <- ggplot(df, aes(x=Rho, y=Proportion)) + theme_gar +
   # geom_abline(intercept=0.7, slope=0, colour="grey20") +
   # geom_segment(data = df.seg1, aes(x=x, y=y, xend=xend, yend=yend)) +
   # geom_segment(data = df.seg2, aes(x=x, y=y, xend=xend, yend=yend), 
@@ -596,20 +606,19 @@ p <- ggplot(df, aes(x=Rho, y=Proportion)) + theme_classic() +
 p
 ```
 
-![](corr_sim_files/figure-markdown_github/unnamed-chunk-15-1.png)
+![](corr_sim_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
 
 ``` r
 # save figure
-ggsave(filename='./figures/figure_precision_rho.png',width=9,height=5) 
+# ggsave(filename='./figures/figure_precision_rho.png',width=9,height=5) 
 ```
 
-Let's look in more detail at the sampling distributions for a generous rho = 0.4.
+Let’s look in more detail at the sampling distributions for a generous
+rho = 0.4.
 
-Correlation estimates as a function of sample size (rho=0.4)
-============================================================
+# Correlation estimates as a function of sample size (rho=0.4)
 
-Parameters
-----------
+## Parameters
 
 ``` r
 nseq <- c(seq(10, 100, 10), 150, 200, 300) # sample sizes
@@ -625,8 +634,7 @@ p <- 200 # 19900 correlations - sum(upper.tri(matrix(0, p, p), diag = FALSE))
 Nsim <- 10000
 ```
 
-Generate data
--------------
+## Generate data
 
 ``` r
 set.seed(21)
@@ -659,8 +667,7 @@ save(res.cor, res.pre,
      file = "./data/samp_dist_rho04.RData")
 ```
 
-Plot kernel density estimates
------------------------------
+## Plot kernel density estimates
 
 ``` r
 # get data
@@ -677,7 +684,7 @@ df[[2]] <- as.character(df[[2]])
 df[[2]] <- factor(df[[2]], levels=unique(df[[2]]))
 
 # make plot
-p <- ggplot(df, aes(x, Density)) + theme_classic() +
+p <- ggplot(df, aes(x, Density)) + theme_gar +
           geom_line(aes(colour = SS), size = 1)  + 
           scale_color_viridis(discrete = TRUE) + 
           theme(axis.title.x = element_text(size = 18),
@@ -698,15 +705,14 @@ p <- ggplot(df, aes(x, Density)) + theme_classic() +
 p
 ```
 
-![](corr_sim_files/figure-markdown_github/unnamed-chunk-18-1.png)
+![](corr_sim_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
 
 ``` r
 # save figure
-ggsave(filename='./figures/figure_sampling_distributions_rho04.png',width=9,height=5) 
+# ggsave(filename='./figures/figure_sampling_distributions_rho04.png',width=9,height=5) 
 ```
 
-Precision
----------
+## Precision
 
 ``` r
 df <- tibble(`Proportion` = as.vector(res.pre),
@@ -729,7 +735,7 @@ df.seg4 <- tibble(x=tmp.pos, xend=tmp.pos,
                   y=0.9, yend=0)
 
 # make plot
-p <- ggplot(df, aes(x=Size, y=Proportion)) + theme_classic() +
+p <- ggplot(df, aes(x=Size, y=Proportion)) + theme_gar +
   # geom_abline(intercept=0.7, slope=0, colour="grey20") +
   geom_segment(data = df.seg1, aes(x=x, y=y, xend=xend, yend=yend)) +
   geom_segment(data = df.seg2, aes(x=x, y=y, xend=xend, yend=yend),
@@ -759,24 +765,26 @@ p <- ggplot(df, aes(x=Size, y=Proportion)) + theme_classic() +
 p
 ```
 
-![](corr_sim_files/figure-markdown_github/unnamed-chunk-19-1.png)
+![](corr_sim_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
 
 ``` r
 # save figure
-ggsave(filename='./figures/figure_precision_rho04.png',width=9,height=5) 
+# ggsave(filename='./figures/figure_precision_rho04.png',width=9,height=5) 
 ```
 
-For 70% of estimates to be within +/- 0.1 of the true correlation value (between 0.3 and 0.5), we need at least 78 observations.
+For 70% of estimates to be within +/- 0.1 of the true correlation value
+(between 0.3 and 0.5), we need at least 78 observations.
 
-For 90% of estimates to be within +/- 0.2 of the true correlation value (between 0.2 and 0.6), we need at least 50 observations.
+For 90% of estimates to be within +/- 0.2 of the true correlation value
+(between 0.2 and 0.6), we need at least 50 observations.
 
-Probability to replicate an effect (rho=0.4)
-============================================
+# Probability to replicate an effect (rho=0.4)
 
-For a given precision, what is the probability to observe similar effects in two consecutive experiments? In other words, what is the probability that two measurements differ by at most a certain amount?
+For a given precision, what is the probability to observe similar
+effects in two consecutive experiments? In other words, what is the
+probability that two measurements differ by at most a certain amount?
 
-Parameters
-----------
+## Parameters
 
 ``` r
 nseq <- c(seq(10, 100, 10), 150, 200, 300) # sample sizes
@@ -790,8 +798,7 @@ p <- 500 # 124750 correlations - sum(upper.tri(matrix(0, p, p), diag = FALSE))
 Nsim <- 10000
 ```
 
-Generate data
--------------
+## Generate data
 
 ``` r
 set.seed(21)
@@ -826,8 +833,7 @@ save(res.rep,
      file = "./data/replication_rho04.RData")
 ```
 
-Illustrate results
-------------------
+## Illustrate results
 
 ``` r
 load("./data/replication_rho04.RData")
@@ -851,7 +857,7 @@ df.seg2 <- tibble(x=tmp.pos, xend=tmp.pos,
 #                   y=0.9, yend=0)
 
 # make plot
-p <- ggplot(df, aes(x=Size, y=Proportion)) + theme_classic() +
+p <- ggplot(df, aes(x=Size, y=Proportion)) + theme_gar +
   # geom_abline(intercept=0.7, slope=0, colour="grey20") +
   geom_segment(data = df.seg1, aes(x=x, y=y, xend=xend, yend=yend)) +
   geom_segment(data = df.seg2, aes(x=x, y=y, xend=xend, yend=yend),
@@ -881,11 +887,12 @@ p <- ggplot(df, aes(x=Size, y=Proportion)) + theme_classic() +
 p
 ```
 
-![](corr_sim_files/figure-markdown_github/unnamed-chunk-22-1.png)
+![](corr_sim_files/figure-gfm/unnamed-chunk-22-1.png)<!-- -->
 
 ``` r
 # save figure
-ggsave(filename='./figures/figure_replication_rho04.png',width=9,height=5) 
+# ggsave(filename='./figures/figure_replication_rho04.png',width=9,height=5) 
 ```
 
-For 80% of replications to be at most 0.2 apart, we need at least 59 observations.
+For 80% of replications to be at most 0.2 apart, we need at least 59
+observations.

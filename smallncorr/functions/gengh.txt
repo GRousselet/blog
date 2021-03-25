@@ -1,0 +1,230 @@
+# ------------------------------------------
+# Code from Rallfun-v35.txt from Rand Wilcox
+# ------------------------------------------
+
+# Original
+# http://dornsife.usc.edu/labs/rwilcox/software/
+
+# Generate n observations from a *g-and-h* distribution
+ghdist <- function(n,g=0,h=0){
+  x<-rnorm(n)
+  if (g>0){
+    ghdist<-(exp(g*x)-1)*exp(h*x^2/2)/g
+  }
+  if(g==0)ghdist<-x*exp(h*x^2/2)
+  ghdist
+}
+
+# --------------------------------------------------------------
+# Code adapted from RGenData::GenDataPopulation from John Ruscio
+# --------------------------------------------------------------
+
+# Reference
+# Ruscio, J. & Kaczetow, W. (2008) 
+# Simulating Multivariate Nonnormal Data Using an Iterative Algorithm. 
+# Multivariate Behav Res, 43, 355-381.
+# https://www.ncbi.nlm.nih.gov/pubmed/26741201
+
+# License: MIT
+# Copyright <2018> <John Ruscio>
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+# Original
+# https://github.com/cran/RGenData/blob/master/R/EFAGenData.R
+
+# Simulate multivariate g-and-h data using an iterative algorithm
+#
+# Args:
+#   n.cases            : Number of observations for each variable - default 1000
+#   n.variables        : Number of variables - default 2
+#   g                  : g parameter of the g-and-h distribution - default 0
+#   h                  : h parameter of the g-and-h distribution - default 0
+#   rho                : Target correlation between variables - default 0
+#   corr.type          : Type of correlation - default "pearson", alternative "spearman"
+# g & h parameters can also be vectors of length n.variables
+#
+# Returns:
+#   data               : Population of data - matrix n.cases rows by n.variables columns
+#
+gengh <- function(n.cases = 1000, n.variables = 2, 
+                  g = 0, h = 0, rho = 0, 
+                  corr.type = "pearson"){
+  
+target.corr <- matrix(c(1, rho, rho, 1), nrow = 2, byrow = TRUE) # covariance matrix
+
+n.factors <- 0 # Number of factors (scalar)
+max.trials <- 5 # Maximum number of trials (scalar)
+initial.multiplier <- 1 # Value of initial multiplier (scalar)
+
+# generate g-and-h data
+if(length(g)==1) g <- rep(g, n.variables)
+if(length(h)==1) h <- rep(h, n.variables)
+distributions <- matrix(NA, nrow = n.cases, ncol = n.variables)
+  for (V in 1:n.variables){
+    distributions[,V] <- sort(ghdist(n.cases, g=g[V], h=h[V]))
+  }
+
+data <- matrix(0, nrow = n.cases, ncol = n.variables)
+iteration <- 0
+best.rmsr <- 1
+trials.without.improvement <- 0
+intermediate.corr <- target.corr
+
+# If number of latent factors was not specified, determine it
+if (n.factors == 0){
+  Eigenvalues.Observed <- eigen(intermediate.corr)$values 
+  Eigenvalues.Random <- matrix(0, nrow = 100, ncol = n.variables) 
+  Random.Data <- matrix(0, nrow = n.cases, ncol = n.variables)
+  for (i in 1:100){
+    for (j in 1:n.variables){
+      Random.Data[,j] <- sample(distributions[,j], size = n.cases, replace = TRUE)
+    }
+      Eigenvalues.Random[i,] <- eigen(cor(Random.Data))$values
+  }
+  Eigenvalues.Random <- apply(Eigenvalues.Random, 2, mean) # calculate mean eigenvalue for each factor 
+  n.factors <- max(1, sum(Eigenvalues.Observed > Eigenvalues.Random))
+}
+
+shared.comp <- matrix(rnorm(n.cases * n.factors, 0, 1), nrow = n.cases,
+                      ncol = n.factors)
+unique.comp <- matrix(rnorm(n.cases * n.variables, 0, 1), nrow = n.cases,
+                      ncol = n.variables)
+shared.load <- matrix(0, nrow = n.variables, ncol = n.factors)
+unique.load <- matrix(0, nrow = n.variables, ncol = 1)
+while (trials.without.improvement < max.trials) {
+  iteration <- iteration + 1
+  factor.analysis <- FactorAnalysis(intermediate.corr, corr.matrix = TRUE,
+                                    max.iteration = 50, n.factors, corr.type)
+  if (n.factors == 1) {
+    shared.load[, 1] <- factor.analysis$loadings
+  } else {
+    for (i in 1:n.factors)
+      shared.load[, i] <- factor.analysis$loadings[, i]
+  }
+  shared.load[shared.load > 1] <- 1
+  shared.load[shared.load < -1] <- -1
+  if (shared.load[1, 1] < 0)
+    shared.load <- shared.load * -1
+  for (i in 1:n.variables)
+    if (sum(shared.load[i, ] * shared.load[i, ]) < 1) {
+      unique.load[i, 1] <- (1 - sum(shared.load[i, ] * shared.load[i, ]))
+    } else {
+      unique.load[i, 1] <- 0
+    }
+  unique.load <- sqrt(unique.load)
+  for (i in 1:n.variables)
+    data[, i] <- (shared.comp %*% t(shared.load))[, i] + unique.comp[, i] *
+    unique.load[i, 1]
+  for (i in 1:n.variables) {
+    data <- data[sort.list(data[, i]), ]
+    data[, i] <- distributions[, i]
+  }
+  reproduced.corr <- cor(data, method = corr.type)
+  residual.corr <- target.corr - reproduced.corr
+  rmsr <- sqrt(sum(residual.corr[lower.tri(residual.corr)] *
+                     residual.corr[lower.tri(residual.corr)]) /
+                 (.5 * (n.variables * n.variables - n.variables)))
+  if (rmsr < best.rmsr) {
+    best.rmsr <- rmsr
+    best.corr <- intermediate.corr
+    best.res <- residual.corr
+    intermediate.corr <- intermediate.corr + initial.multiplier *
+      residual.corr
+    trials.without.improvement <- 0
+  } else {
+    trials.without.improvement <- trials.without.improvement + 1
+    current.multiplier <- initial.multiplier *
+      .5 ^ trials.without.improvement
+    intermediate.corr <- best.corr + current.multiplier * best.res
+  }
+}
+
+factor.analysis <- FactorAnalysis(best.corr, corr.matrix = TRUE,
+                                  max.iteration = 50, n.factors,
+                                  corr.type)
+if (n.factors == 1) {
+  shared.load[, 1] <- factor.analysis$loadings
+} else {
+  for (i in 1:n.factors)
+    shared.load[, i] <- factor.analysis$loadings[, i]
+}
+shared.load[shared.load > 1] <- 1
+shared.load[shared.load < -1] <- -1
+if (shared.load[1, 1] < 0)
+  shared.load <- shared.load * -1
+for (i in 1:n.variables)
+  if (sum(shared.load[i, ] * shared.load[i, ]) < 1) {
+    unique.load[i, 1] <- (1 - sum(shared.load[i, ] * shared.load[i, ]))
+  } else {
+    unique.load[i, 1] <- 0
+  }
+unique.load <- sqrt(unique.load)
+for (i in 1:n.variables)
+  data[, i] <- (shared.comp %*% t(shared.load))[, i] + unique.comp[, i] *
+  unique.load[i, 1]
+data <- apply(data, 2, scale) # standardizes each variable in the matrix
+for (i in 1:n.variables) {
+  data <- data[sort.list(data[, i]), ]
+  data[, i] <- distributions[, i]
+}
+data
+}
+
+################################################################################
+FactorAnalysis <- function(data, corr.matrix = FALSE, max.iteration = 50,
+                            n.factors = 0, corr.type = "pearson") {
+# Analyzes comparison data with known factorial structures
+#
+# Args:
+#   data          : Matrix to store the simulated data.
+#   corr.matrix   : Correlation matrix (default is FALSE)
+#   max.iteration : Maximum number of iterations (scalar, default is 50).
+#   n.factors     : Number of factors (scalar, default is 0).
+#   corr.type     : Type of correlation (character, default is "pearson",
+#                   user can also call "spearman").
+#
+# Returns:
+#   $loadings : Factor loadings (vector, if one factor. matrix, if multiple
+#               factors)
+#   $factors  : Number of factors (scalar).
+#
+  data <- as.matrix(data)
+  n.variables <- dim(data)[2]
+  if (n.factors == 0) {
+    n.factors <- n.variables
+    determine <- TRUE
+  } else {
+    determine <- FALSE
+  }
+  if (!corr.matrix) {
+    corr.matrix <- cor(data, method = corr.type)
+  } else {
+    corr.matrix <- data
+  }
+  criterion <- .001
+  old.h2 <- rep(99, n.variables)
+  h2 <- rep(0, n.variables)
+  change <- 1
+  iteration <- 0
+  factor.loadings <- matrix(nrow = n.variables, ncol = n.factors)
+  while ((change >= criterion) & (iteration < max.iteration)) {
+    iteration <- iteration + 1
+    eigenvalue <- eigen(corr.matrix)
+    l <- sqrt(eigenvalue$values[1:n.factors])
+    for (i in 1:n.factors)
+      factor.loadings[, i] <- eigenvalue$vectors[, i] * l[i]
+    for (i in 1:n.variables)
+      h2[i] <- sum(factor.loadings[i, ] * factor.loadings[i, ])
+    change <- max(abs(old.h2 - h2))
+    old.h2 <- h2
+    diag(corr.matrix) <- h2
+  }
+  if (determine) n.factors <- sum(eigenvalue$values > 1)
+  return(list(loadings = factor.loadings[, 1:n.factors],
+              factors = n.factors))
+}

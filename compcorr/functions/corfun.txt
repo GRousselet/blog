@@ -140,7 +140,7 @@ winval<-ifelse(winval>=xtop,xtop,winval)
 winval
 }
 
-# merge twocor & twopcor + Fisher + HC4 methods
+# merge twocor & twopcor + Fisher
 twocor.all <- function(x1,y1,x2,y2,nboot=599,alpha=.05){
   #
   #  Compute a .95 confidence interval for the
@@ -155,8 +155,6 @@ twocor.all <- function(x1,y1,x2,y2,nboot=599,alpha=.05){
   n1 <- length(x1)
   n2 <- length(x2)
   sig.fisher.pears <- fisher.cor.test(r1, r2, n1, n2) <= alpha
-  # HC4 -------------------
-  sig.hc4.pears <- twohc4cor(x1,y1,x2,y2) <= alpha
   # BOOTSTRAP -------------
   data1 <- matrix(sample(length(y1),size=length(y1)*nboot,replace=TRUE),nrow=nboot)
   data2 <- matrix(sample(length(y2),size=length(y2)*nboot,replace=TRUE),nrow=nboot)
@@ -208,8 +206,7 @@ twocor.all <- function(x1,y1,x2,y2,nboot=599,alpha=.05){
   sig.boot.spear <- sig
   list(sig.boot.spear = sig.boot.spear,
        sig.boot.pears = sig.boot.pears,
-       sig.fisher.pears = sig.fisher.pears,
-       sig.hc4.pears = sig.hc4.pears)
+       sig.fisher.pears = sig.fisher.pears)
 }
 
 #  Compute correlation for x[isub] and y[isub]

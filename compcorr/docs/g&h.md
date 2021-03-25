@@ -1,34 +1,45 @@
----
-title: "Simulate correlations using g & h distributions"
-author: "Guillaume A. Rousselet"
-date: "`r Sys.Date()`"
-output:
-  github_document:
-  html_preview: yes
-  toc: yes
-  toc_depth: 2
-  # pdf_document:
-  #   fig_caption: no
-  #   number_sections: no
-  #   toc: yes
-  #   toc_depth: 2
----
+Simulate correlations using g & h distributions
+================
+Guillaume A. Rousselet
+2019-07-24
 
 # Dependencies
-```{r}
+
+``` r
 library(tibble)
 library(ggplot2)
 library(cowplot)
+```
+
+    ## 
+    ## Attaching package: 'cowplot'
+
+    ## The following object is masked from 'package:ggplot2':
+    ## 
+    ##     ggsave
+
+``` r
 source("./functions/theme_gar.txt")
 source("./functions/ghmult.txt")
 ```
 
-The code to generate *g&h* distributions is from Rand Wilcox's `Rallfun-v35.txt`, which is available in full [here](http://dornsife.usc.edu/labs/rwilcox/software/). A subset of functions was copied into the `ghmult.txt` file for convenience. The function `ghmul` is used to generate bivariate normal distributions, then each marginal distribution is transformed to a *g&h* distribution. After transformation, the correlation is not the same as the desired one, and the modification varies as a function of *g*, *h*, and *rho*. So here we use the function `rngh.sub` to determine the actual value of rho needed to obtained the desired value after *g&h* transformation. It uses *n*=one million observations to check on the actual value of rho.
+The code to generate *g\&h* distributions is from Rand Wilcox’s
+`Rallfun-v35.txt`, which is available in full
+[here](http://dornsife.usc.edu/labs/rwilcox/software/). A subset of
+functions was copied into the `ghmult.txt` file for convenience. The
+function `ghmul` is used to generate bivariate normal distributions,
+then each marginal distribution is transformed to a *g\&h* distribution.
+After transformation, the correlation is not the same as the desired
+one, and the modification varies as a function of *g*, *h*, and *rho*.
+So here we use the function `rngh.sub` to determine the actual value of
+rho needed to obtained the desired value after *g\&h* transformation. It
+uses *n*=one million observations to check on the actual value of rho.
 
 # Examples: rho = 0.5
 
 ## Get samples
-```{r}
+
+``` r
 rho.pop <- 0.5
 gseq <- seq(0, 1, 0.1)
 hseq <- seq(0, 0.4, 0.1)
@@ -50,8 +61,11 @@ for(G in 1:length(gseq)){
 }
 ```
 
+    ## Loading required package: MASS
+
 ## Make figure
-```{r, fig.height=10, fig.width=14}
+
+``` r
 df <- tibble(x = as.vector(m1),
              y = as.vector(m2),
              g = factor(rep(rep(gseq, each = n), hn)),
@@ -64,14 +78,19 @@ ggplot(df, aes(x=x, y=y)) + theme_gar +
   coord_cartesian(xlim = c(-5, 20), ylim = c(-5, 20)) +
   theme(panel.grid.minor = element_blank(),
         axis.title = element_blank())
+```
 
+![](g_h_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
+
+``` r
 # ggsave("./figures/gh_rho05_examples.pdf", width = 40, height = 30, units = "cm")
 ```
 
 # Examples: rho = 0
 
 ## Get samples
-```{r}
+
+``` r
 rho.pop <- 0
 gseq <- seq(0, 1, 0.1)
 hseq <- seq(0, 0.4, 0.1)
@@ -94,7 +113,8 @@ for(G in 1:length(gseq)){
 ```
 
 ## Make figure
-```{r, fig.height=10, fig.width=14}
+
+``` r
 df <- tibble(x = as.vector(m1),
              y = as.vector(m2),
              g = factor(rep(rep(gseq, each = n), hn)),
@@ -107,14 +127,19 @@ ggplot(df, aes(x=x, y=y)) + theme_gar +
   coord_cartesian(xlim = c(-5, 20), ylim = c(-5, 20)) +
   theme(panel.grid.minor = element_blank(),
         axis.title = element_blank())
+```
 
+![](g_h_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
+
+``` r
 # ggsave("./figures/gh_rho0_examples.pdf", width = 40, height = 30, units = "cm")
 ```
 
 # Examples: g = 0, h = 0
 
 ## Get samples
-```{r}
+
+``` r
 g <- 0 
 h <- 0
 rhoseq <- seq(0, 0.95, 0.05)
@@ -132,7 +157,8 @@ for(R in 1:rn){
 ```
 
 ## Make figure
-```{r, fig.height=10, fig.width=14}
+
+``` r
 df <- tibble(x = as.vector(m1),
              y = as.vector(m2),
              rho = factor(rep(rhoseq, each = n)))
@@ -144,14 +170,19 @@ ggplot(df, aes(x=x, y=y)) + theme_gar +
   coord_cartesian(xlim = c(-5, 20), ylim = c(-5, 20)) +
   theme(panel.grid.minor = element_blank(),
         axis.title = element_blank())
+```
 
+![](g_h_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+
+``` r
 # ggsave("./figures/gh_g0h0_examples.pdf", width = 40, height = 30, units = "cm")
 ```
 
 # Examples: g = 1, h = 0
 
 ## Get samples
-```{r}
+
+``` r
 g <- 1
 h <- 0
 rhoseq <- seq(0, 0.95, 0.05)
@@ -169,7 +200,8 @@ for(R in 1:rn){
 ```
 
 ## Make figure
-```{r, fig.height=10, fig.width=14}
+
+``` r
 df <- tibble(x = as.vector(m1),
              y = as.vector(m2),
              rho = factor(rep(rhoseq, each = n)))
@@ -181,14 +213,19 @@ ggplot(df, aes(x=x, y=y)) + theme_gar +
   coord_cartesian(xlim = c(-5, 20), ylim = c(-5, 20)) +
   theme(panel.grid.minor = element_blank(),
         axis.title = element_blank())
+```
 
+![](g_h_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+
+``` r
 # ggsave("./figures/gh_g1h0_examples.pdf", width = 40, height = 30, units = "cm")
 ```
 
 # Examples: g = 0, h = 0.2
 
 ## Get samples
-```{r}
+
+``` r
 g <- 0 
 h <- 0.2
 rhoseq <- seq(0, 0.95, 0.05)
@@ -206,7 +243,8 @@ for(R in 1:rn){
 ```
 
 ## Make figure
-```{r, fig.height=10, fig.width=14}
+
+``` r
 df <- tibble(x = as.vector(m1),
              y = as.vector(m2),
              rho = factor(rep(rhoseq, each = n)))
@@ -218,14 +256,19 @@ ggplot(df, aes(x=x, y=y)) + theme_gar +
   coord_cartesian(xlim = c(-5, 20), ylim = c(-5, 20)) +
   theme(panel.grid.minor = element_blank(),
         axis.title = element_blank())
+```
 
+![](g_h_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
+
+``` r
 # ggsave("./figures/gh_g0h02_examples.pdf", width = 40, height = 30, units = "cm")
 ```
 
 # Examples: g = 1, h = 0.2
 
 ## Get samples
-```{r}
+
+``` r
 g <- 1
 h <- 0.2
 rhoseq <- seq(0, 0.95, 0.05)
@@ -243,7 +286,8 @@ for(R in 1:rn){
 ```
 
 ## Make figure
-```{r, fig.height=10, fig.width=14}
+
+``` r
 df <- tibble(x = as.vector(m1),
              y = as.vector(m2),
              rho = factor(rep(rhoseq, each = n)))
@@ -255,20 +299,23 @@ ggplot(df, aes(x=x, y=y)) + theme_gar +
   coord_cartesian(xlim = c(-5, 20), ylim = c(-5, 20)) +
   theme(panel.grid.minor = element_blank(),
         axis.title = element_blank())
+```
 
+![](g_h_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
+
+``` r
 # ggsave("./figures/gh_g1h02_examples.pdf", width = 40, height = 30, units = "cm")
 ```
 
 # Summary figure: g/h = 0/0.2
 
-n = 5000
-g = 0 / 0.2
-h = 0 / 0.2
+n = 5000 g = 0 / 0.2 h = 0 / 0.2
 
 ## rho = 0
 
 ### Get samples
-```{r}
+
+``` r
 set.seed(21)
 
 n <- 5000
@@ -313,7 +360,8 @@ df <- tibble(x = c(x1, x2, x3, x4),
 ```
 
 ### Make figure
-```{r}
+
+``` r
 pA <- ggplot(df, aes(x=x, y=y)) + theme_gar +
   geom_point(size = 0.5, alpha = 0.1) +
   # geom_smooth(method = "lm") +
@@ -322,13 +370,19 @@ pA <- ggplot(df, aes(x=x, y=y)) + theme_gar +
   theme(axis.title = element_blank())
   # theme(panel.grid.minor = element_blank())
 pA
+```
+
+![](g_h_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
+
+``` r
 # ggsave("./figures/gh_rho0.png", width = 20, height = 20, units = "cm")
 ```
 
 ## rho = 0.5
 
 ### Get samples
-```{r}
+
+``` r
 set.seed(21)
 
 n <- 5000
@@ -373,7 +427,8 @@ df <- tibble(x = c(x1, x2, x3, x4),
 ```
 
 ### Make figure
-```{r}
+
+``` r
 pB <- ggplot(df, aes(x=x, y=y)) + theme_gar +
   geom_point(size = 0.5, alpha = 0.1) +
   # geom_smooth(method = "lm") +
@@ -382,12 +437,17 @@ pB <- ggplot(df, aes(x=x, y=y)) + theme_gar +
   theme(axis.title = element_blank())
   # theme(panel.grid.minor = element_blank())
 pB
+```
+
+![](g_h_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->
+
+``` r
 # ggsave("./figures/gh_rho05.png", width = 20, height = 20, units = "cm")
 ```
 
 ## Combine panels
 
-```{r, eval=FALSE}
+``` r
 cowplot::plot_grid(pA, pB,
                    labels = c("A", "B"))
 ggsave("./figures/gh_summary.pdf", width = 40, height = 20, units = "cm")
@@ -395,14 +455,13 @@ ggsave("./figures/gh_summary.pdf", width = 40, height = 20, units = "cm")
 
 # Summary figure: vary g, h = 0
 
-n = 5000
-g = 0.1 -> 0.9
-h = 0
+n = 5000 g = 0.1 -\> 0.9 h = 0
 
 ## rho = 0
 
 ### Get samples
-```{r}
+
+``` r
 set.seed(21)
 n <- 5000
 rho.pop <- 0
@@ -423,7 +482,8 @@ df <- tibble(x = as.vector(res[,1,]),
 ```
 
 ### Make figure
-```{r}
+
+``` r
 pA <- ggplot(df, aes(x=x, y=y)) + theme_gar +
   geom_point(size = 0.5, alpha = 0.1) +
   # geom_smooth(method = "lm") +
@@ -432,13 +492,19 @@ pA <- ggplot(df, aes(x=x, y=y)) + theme_gar +
   theme(axis.title = element_blank())
   # theme(panel.grid.minor = element_blank())
 pA
+```
+
+![](g_h_files/figure-gfm/unnamed-chunk-20-1.png)<!-- -->
+
+``` r
 # ggsave("./figures/gvar_h0_rho0.png", width = 20, height = 20, units = "cm")
 ```
 
 ## rho = 0.5
 
 ### Get samples
-```{r}
+
+``` r
 set.seed(21)
 n <- 5000
 rho.pop <- 0.5
@@ -459,19 +525,25 @@ df <- tibble(x = as.vector(res[,1,]),
 ```
 
 ### Make figure
-```{r}
+
+``` r
 pB <- ggplot(df, aes(x=x, y=y)) + theme_gar +
   geom_point(size = 0.5, alpha = 0.1) +
   facet_wrap(vars(g), ncol = 3) +
   coord_cartesian(xlim = c(-5, 25), ylim = c(-5, 25)) +
   theme(axis.title = element_blank())
 pB
+```
+
+![](g_h_files/figure-gfm/unnamed-chunk-22-1.png)<!-- -->
+
+``` r
 # ggsave("./figures/gvar_h0_rho05.png", width = 20, height = 20, units = "cm")
 ```
 
 ## Combine panels
 
-```{r, eval=FALSE}
+``` r
 cowplot::plot_grid(pA, pB,
                    labels = c("A", "B"))
 ggsave("./figures/gh_summary.pdf", width = 40, height = 20, units = "cm")

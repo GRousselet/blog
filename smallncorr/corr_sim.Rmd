@@ -23,11 +23,13 @@ output:
 # Wilcox, R.R. (2012) 
 # Introduction to robust estimation and hypothesis testing. 
 # Academic Press, San Diego, CA.
-source('./functions/gh.txt')
-source('./functions/akerd.txt')
 library(ggplot2)
 library(tibble)
 library(viridis)
+source('./functions/gh.txt')
+source('./functions/akerd.txt')
+source('./functions/theme_gar.txt')
+source("./functions/gengh.txt") # John Ruscio's algorithm to generate multivariate non-normal data
 ```
 
 # Check `cor()` function
@@ -62,47 +64,65 @@ allcorr <- res[upper.tri(res, diag = FALSE)]
 hist(allcorr, xlim = c(-1, 1))
 ```
 
-# Fake correlation
-```{r}
-set.seed(7)
-n <- 30 # sample size
-g <- 0
-h <- 0
-rho <- 0
-rth <- 0.6 # r threshold
-p <- 2
-gotit <- 0
+# Correlations: samples from null population 
 
-while(gotit == 0){
-  data <- rmul(n,p=p,cmat=diag(rep(1,p)),rho=rho,mar.fun=ghdist,OP=TRUE,g=g,h=h)
-  res <- cor(data, method = "pearson")
-  if(res[1,2] > rth){
-    gotit <- 1
-  }
+Generate 6 correlations to make 2 x 3 figure.
+```{r}
+set.seed(21)
+n <- 20 # sample size
+rho <- 0
+ncor <- 6
+p <- 2
+
+# parameters for bivariate g-and-h populations
+# set parameter g to 0 to create an unrealistic normal population
+npop <- 20000 # population size
+g <- 0.5 # sample from skewed bivariate population
+h <- 0
+pop <- gengh(n.cases = npop, n.variables = 2, g = g, h = h, rho = rho, corr.type = "pearson")
+
+res.raw <- array(data = NA, dim = c(n, 2, ncor))
+res.cor <- matrix(data = NA, nrow = ncor, ncol = 4)
+
+for(C in 1:ncor){
+   # res.raw[,,C] <- rmul(n,p=p,cmat=diag(rep(1,p)),rho=rho,mar.fun=ghdist,OP=TRUE,g=g,h=h)
+  # sample with replacement from population
+  id <- sample(npop, size = n, replace = TRUE) 
+  res.raw[,,C] <- pop[id,]
+   tmp <- cor.test(res.raw[,1,C], res.raw[,2,C], method = "pearson")
+   res.cor[C,1] <- tmp$estimate # correlation coefficient
+   res.cor[C,2] <- tmp$conf.int[1] # CI lower bound
+   res.cor[C,3] <- tmp$conf.int[2] # CI upper bound
+   res.cor[C,4] <- tmp$p.value # p value
 }
 
-df <- tibble(x=data[,1], y=data[,2])
-ggplot(data=df, aes(x=x, y=y)) + theme_classic() +
+# make data frame
+df <- tibble(x=as.vector(res.raw[,1,]), 
+             y=as.vector(res.raw[,2,]),
+             condition = factor(rep(c(1:ncor), each = n)))
+
+# rename levels to make titles
+levels(df$condition) <- c(paste0("r=",round(res.cor[1,1],digits=2)," [",round(res.cor[1,2],digits=2),", ",round(res.cor[1,3],digits=2),"], p=",round(res.cor[1,4],digits=3)), 
+                          paste0("r=",round(res.cor[2,1],digits=2)," [",round(res.cor[2,2],digits=2),", ",round(res.cor[2,3],digits=2),"], p=",round(res.cor[2,4],digits=3)), 
+                          paste0("r=",round(res.cor[3,1],digits=2)," [",round(res.cor[3,2],digits=2),", ",round(res.cor[3,3],digits=2),"], p=",round(res.cor[3,4],digits=3)), 
+                          paste0("r=",round(res.cor[4,1],digits=2)," [",round(res.cor[4,2],digits=2),", ",round(res.cor[4,3],digits=2),"], p=",round(res.cor[4,4],digits=3)), 
+                          paste0("r=",round(res.cor[5,1],digits=2)," [",round(res.cor[5,2],digits=2),", ",round(res.cor[5,3],digits=2),"], p=",round(res.cor[5,4],digits=3)), 
+                          paste0("r=",round(res.cor[6,1],digits=2)," [",round(res.cor[6,2],digits=2),", ",round(res.cor[6,3],digits=2),"], p=",round(res.cor[6,4],digits=3)))
+
+ggplot(data=df, aes(x=x, y=y)) + theme_gar +
   geom_point(shape=21, size=3, fill="yellow", alpha=0.8) +
-  geom_smooth(method=lm) +
-  coord_cartesian(xlim=c(-2.5, 2.5), ylim=c(-2.5, 2.5)) +
-  theme(plot.title = element_text(size=20),
-        axis.title.x = element_text(size = 18),
+  geom_smooth(method=lm, se = FALSE) +
+  # coord_cartesian(xlim=c(-2.5, 2.5), ylim=c(-2.5, 2.5)) +
+  theme(axis.title.x = element_text(size = 18),
         axis.text = element_text(size = 14, colour="black"),
         axis.title.y = element_text(size = 18),
-        legend.key.width = unit(1.5,"cm"),
-        legend.position = "right",
-        legend.text=element_text(size = 16),
-        legend.title=element_text(size = 18),
+        strip.text = element_text(size = 10),
         panel.background = element_rect(fill="grey95")) +
   labs(x = "Variable 1", y = "Variable 2") +
-  # guides(colour = guide_legend(override.aes = list(size=3), # make thicker legend lines
-  #   title = "Precision \n(within +/-)")) + # change legend title
-  ggtitle(paste0("Nice looking correlation?! (r=",round(res[1,2],digits = 3),")")) 
-p
+  facet_wrap(vars(condition))
 
 # save figure
-ggsave(filename='./figures/figure_random_correlation.png',width=7,height=5) 
+# ggsave(filename='./figures/figure_random_correlation.png',width=7,height=5) 
 ```
 
 # Correlation estimates as a function of sample size
@@ -119,6 +139,7 @@ g <- 0
 h <- 0
 rho <- 0
 p <- 200 # 19900 correlations - sum(upper.tri(matrix(0, p, p), diag = FALSE))
+Nsim <- 10000
 ```
 
 ## Generate data
@@ -130,9 +151,16 @@ res.pre <- matrix(data = 0, nrow = Npre, ncol = Nn)
 
 for(iter.n in 1:Nn){
   print(paste0("Sample size = ", nseq[iter.n]))
-  data <- rmul(nseq[iter.n],p=p,cmat=diag(rep(1,p)),rho=rho,mar.fun=ghdist,OP=TRUE,g=g,h=h)
-  res <- cor(data, method = "pearson")
-  allcorr <- res[upper.tri(res, diag = FALSE)]
+  
+  ## original code
+  # data <- rmul(nseq[iter.n],p=p,cmat=diag(rep(1,p)),rho=rho,mar.fun=ghdist,OP=TRUE,g=g,h=h)
+  # res <- cor(data, method = "pearson")
+  # allcorr <- res[upper.tri(res, diag = FALSE)]
+  
+  ## code suggested by Jan Vanhove:
+  # https://twitter.com/janhove/status/1002659890589061120/photo/1
+  allcorr <- replicate(Nsim, cor(MASS::mvrnorm(n = nseq[iter.n], mu = c(0,0), Sigma = matrix(c(1, rho, rho, 1), nrow = 2, byrow = TRUE)))[1,2])
+  
   res.cor[,iter.n] <- akerd(allcorr, pyhat=TRUE, pts=pts, plotit=FALSE)
   
   # Probability of getting estimate within +/- x of population value
@@ -162,7 +190,7 @@ df[[2]] <- as.character(df[[2]])
 df[[2]] <- factor(df[[2]], levels=unique(df[[2]]))
 
 # make plot
-p <- ggplot(df, aes(x, Density)) + theme_classic() +
+p <- ggplot(df, aes(x, Density)) + theme_gar +
           geom_line(aes(colour = SS), size = 1)  + 
           scale_color_viridis(discrete = TRUE) + 
           theme(axis.title.x = element_text(size = 18),
@@ -183,7 +211,7 @@ p <- ggplot(df, aes(x, Density)) + theme_classic() +
 p
 
 # save figure
-ggsave(filename='./figures/figure_sampling_distributions.png',width=9,height=5) 
+# ggsave(filename='./figures/figure_sampling_distributions.png',width=9,height=5) 
 ```
 
 ## Precision
@@ -208,7 +236,7 @@ df.seg4 <- tibble(x=tmp.pos, xend=tmp.pos,
                   y=0.9, yend=0)
 
 # make plot
-p <- ggplot(df, aes(x=Size, y=Proportion)) + theme_classic() +
+p <- ggplot(df, aes(x=Size, y=Proportion)) + theme_gar +
   # geom_abline(intercept=0.7, slope=0, colour="grey20") +
   geom_segment(data = df.seg1, aes(x=x, y=y, xend=xend, yend=yend)) +
   geom_segment(data = df.seg2, aes(x=x, y=y, xend=xend, yend=yend), 
@@ -238,7 +266,7 @@ p <- ggplot(df, aes(x=Size, y=Proportion)) + theme_classic() +
 p
 
 # save figure
-ggsave(filename='./figures/figure_precision.png',width=9,height=5) 
+# ggsave(filename='./figures/figure_precision.png',width=9,height=5) 
 ```
 
 For 70% of estimates to be within +/- 0.1 of the true correlation value (between -0.1 and 0.1), we need at least `r round(approx(y=nseq,x=res.pre[4,],xout=0.70)$y)` observations.
@@ -258,6 +286,7 @@ g <- 0
 h <- 0
 rho <- 0
 p <- 500 # 124750 correlations - sum(upper.tri(matrix(0, p, p), diag = FALSE))
+Nsim <- 10000
 ```
 
 ## Generate data
@@ -268,12 +297,20 @@ res.rep <- matrix(data = 0, nrow = Npre, ncol = Nn)
 
 for(iter.n in 1:Nn){
   print(paste0("Sample size = ", nseq[iter.n]))
-  data <- rmul(nseq[iter.n],p=p,cmat=diag(rep(1,p)),rho=rho,mar.fun=ghdist,OP=TRUE,g=g,h=h)
-  res <- cor(data, method = "pearson")
-  allcorr1 <- res[upper.tri(res, diag = FALSE)]
-  data <- rmul(nseq[iter.n],p=p,cmat=diag(rep(1,p)),rho=rho,mar.fun=ghdist,OP=TRUE,g=g,h=h)
-  res <- cor(data, method = "pearson")
-  allcorr2 <- res[upper.tri(res, diag = FALSE)]
+  
+  ## original code
+  # data <- rmul(nseq[iter.n],p=p,cmat=diag(rep(1,p)),rho=rho,mar.fun=ghdist,OP=TRUE,g=g,h=h)
+  # res <- cor(data, method = "pearson")
+  # allcorr1 <- res[upper.tri(res, diag = FALSE)]
+  # data <- rmul(nseq[iter.n],p=p,cmat=diag(rep(1,p)),rho=rho,mar.fun=ghdist,OP=TRUE,g=g,h=h)
+  # res <- cor(data, method = "pearson")
+  # allcorr2 <- res[upper.tri(res, diag = FALSE)]
+  
+   ## code suggested by Jan Vanhove:
+  # https://twitter.com/janhove/status/1002659890589061120/photo/1
+  allcorr1 <- replicate(Nsim, cor(MASS::mvrnorm(n = nseq[iter.n], mu = c(0,0), Sigma = matrix(c(1, rho, rho, 1), nrow = 2, byrow = TRUE)))[1,2])
+  
+  allcorr2 <- replicate(Nsim, cor(MASS::mvrnorm(n = nseq[iter.n], mu = c(0,0), Sigma = matrix(c(1, rho, rho, 1), nrow = 2, byrow = TRUE)))[1,2])
   
   # Probability of getting estimates at most x units of each other
   for(iter.p in 1:Npre){
@@ -309,7 +346,7 @@ df.seg2 <- tibble(x=tmp.pos, xend=tmp.pos,
 #                   y=0.9, yend=0)
 
 # make plot
-p <- ggplot(df, aes(x=Size, y=Proportion)) + theme_classic() +
+p <- ggplot(df, aes(x=Size, y=Proportion)) + theme_gar +
   # geom_abline(intercept=0.7, slope=0, colour="grey20") +
   geom_segment(data = df.seg1, aes(x=x, y=y, xend=xend, yend=yend)) +
   geom_segment(data = df.seg2, aes(x=x, y=y, xend=xend, yend=yend),
@@ -339,7 +376,7 @@ p <- ggplot(df, aes(x=Size, y=Proportion)) + theme_classic() +
 p
 
 # save figure
-ggsave(filename='./figures/figure_replication.png',width=9,height=5) 
+# ggsave(filename='./figures/figure_replication.png',width=9,height=5) 
 ```
 
 For 80% of replications to be at most 0.2 apart, we need at least `r round(approx(y=nseq,x=res.rep[4,],xout=0.8)$y)` observations.
@@ -362,6 +399,7 @@ g <- 0
 h <- 0
 # rho <- 0
 p <- 200 # 19900 correlations - sum(upper.tri(matrix(0, p, p), diag = FALSE))
+Nsim <- 10000
 ```
 
 ## Generate data
@@ -373,9 +411,16 @@ res.pre <- matrix(data = 0, nrow = Npre, ncol = Nrho)
 
 for(iter.rho in 1:Nrho){
   print(paste0("rho = ", rhoseq[iter.rho]))
-  data <- rmul(n,p=p,cmat=diag(rep(1,p)),rho=rhoseq[iter.rho],mar.fun=ghdist,OP=TRUE,g=g,h=h)
-  res <- cor(data, method = "pearson")
-  allcorr <- res[upper.tri(res, diag = FALSE)]
+  
+  ## original code:
+  # data <- rmul(n,p=p,cmat=diag(rep(1,p)),rho=rhoseq[iter.rho],mar.fun=ghdist,OP=TRUE,g=g,h=h)
+  # res <- cor(data, method = "pearson")
+  # allcorr <- res[upper.tri(res, diag = FALSE)]
+  
+  ## code suggested by Jan Vanhove:
+  # https://twitter.com/janhove/status/1002659890589061120/photo/1
+  allcorr <- replicate(Nsim, cor(MASS::mvrnorm(n = n, mu = c(0,0), Sigma = matrix(c(1, rhoseq[iter.rho], rhoseq[iter.rho], 1), nrow = 2, byrow = TRUE)))[1,2])
+  
   res.cor[,iter.rho] <- akerd(allcorr, pyhat=TRUE, pts=pts, plotit=FALSE)
   
   # Probability of getting estimate within +/- x of population value
@@ -405,7 +450,7 @@ df[[2]] <- as.character(df[[2]])
 df[[2]] <- factor(df[[2]], levels=unique(df[[2]]))
 
 # make plot
-p <- ggplot(df, aes(x, Density)) + theme_classic() +
+p <- ggplot(df, aes(x, Density)) + theme_gar +
           geom_line(aes(colour = RHO), size = 1)  + 
           scale_color_viridis(discrete = TRUE) + 
           theme(axis.title.x = element_text(size = 18),
@@ -426,7 +471,7 @@ p <- ggplot(df, aes(x, Density)) + theme_classic() +
 p
 
 # save figure
-ggsave(filename='./figures/figure_sampling_distributions_rho.png',width=9,height=5) 
+# ggsave(filename='./figures/figure_sampling_distributions_rho.png',width=9,height=5) 
 ```
 
 ## Precision
@@ -451,7 +496,7 @@ df$Precision <- factor(df$Precision, levels=unique(df$Precision))
 #                   y=0.9, yend=0)
 
 # make plot
-p <- ggplot(df, aes(x=Rho, y=Proportion)) + theme_classic() +
+p <- ggplot(df, aes(x=Rho, y=Proportion)) + theme_gar +
   # geom_abline(intercept=0.7, slope=0, colour="grey20") +
   # geom_segment(data = df.seg1, aes(x=x, y=y, xend=xend, yend=yend)) +
   # geom_segment(data = df.seg2, aes(x=x, y=y, xend=xend, yend=yend), 
@@ -480,7 +525,7 @@ p <- ggplot(df, aes(x=Rho, y=Proportion)) + theme_classic() +
 p
 
 # save figure
-ggsave(filename='./figures/figure_precision_rho.png',width=9,height=5) 
+# ggsave(filename='./figures/figure_precision_rho.png',width=9,height=5) 
 ```
 
 Let's look in more detail at the sampling distributions for a generous rho = 0.4.
@@ -499,6 +544,7 @@ g <- 0
 h <- 0
 rho <- 0.4
 p <- 200 # 19900 correlations - sum(upper.tri(matrix(0, p, p), diag = FALSE))
+Nsim <- 10000
 ```
 
 ## Generate data
@@ -510,9 +556,16 @@ res.pre <- matrix(data = 0, nrow = Npre, ncol = Nn)
 
 for(iter.n in 1:Nn){
   print(paste0("Sample size = ", nseq[iter.n]))
-  data <- rmul(nseq[iter.n],p=p,cmat=diag(rep(1,p)),rho=rho,mar.fun=ghdist,OP=TRUE,g=g,h=h)
-  res <- cor(data, method = "pearson")
-  allcorr <- res[upper.tri(res, diag = FALSE)]
+  
+  ## original code
+  # data <- rmul(nseq[iter.n],p=p,cmat=diag(rep(1,p)),rho=rho,mar.fun=ghdist,OP=TRUE,g=g,h=h)
+  # res <- cor(data, method = "pearson")
+  # allcorr <- res[upper.tri(res, diag = FALSE)]
+  
+   ## code suggested by Jan Vanhove:
+  # https://twitter.com/janhove/status/1002659890589061120/photo/1
+  allcorr <- replicate(Nsim, cor(MASS::mvrnorm(n = nseq[iter.n], mu = c(0,0), Sigma = matrix(c(1, rho, rho, 1), nrow = 2, byrow = TRUE)))[1,2])
+  
   res.cor[,iter.n] <- akerd(allcorr, pyhat=TRUE, pts=pts, plotit=FALSE)
   
   # Probability of getting estimate within +/-x% of population value
@@ -542,7 +595,7 @@ df[[2]] <- as.character(df[[2]])
 df[[2]] <- factor(df[[2]], levels=unique(df[[2]]))
 
 # make plot
-p <- ggplot(df, aes(x, Density)) + theme_classic() +
+p <- ggplot(df, aes(x, Density)) + theme_gar +
           geom_line(aes(colour = SS), size = 1)  + 
           scale_color_viridis(discrete = TRUE) + 
           theme(axis.title.x = element_text(size = 18),
@@ -563,7 +616,7 @@ p <- ggplot(df, aes(x, Density)) + theme_classic() +
 p
 
 # save figure
-ggsave(filename='./figures/figure_sampling_distributions_rho04.png',width=9,height=5) 
+# ggsave(filename='./figures/figure_sampling_distributions_rho04.png',width=9,height=5) 
 ```
 
 ## Precision
@@ -588,7 +641,7 @@ df.seg4 <- tibble(x=tmp.pos, xend=tmp.pos,
                   y=0.9, yend=0)
 
 # make plot
-p <- ggplot(df, aes(x=Size, y=Proportion)) + theme_classic() +
+p <- ggplot(df, aes(x=Size, y=Proportion)) + theme_gar +
   # geom_abline(intercept=0.7, slope=0, colour="grey20") +
   geom_segment(data = df.seg1, aes(x=x, y=y, xend=xend, yend=yend)) +
   geom_segment(data = df.seg2, aes(x=x, y=y, xend=xend, yend=yend),
@@ -618,12 +671,12 @@ p <- ggplot(df, aes(x=Size, y=Proportion)) + theme_classic() +
 p
 
 # save figure
-ggsave(filename='./figures/figure_precision_rho04.png',width=9,height=5) 
+# ggsave(filename='./figures/figure_precision_rho04.png',width=9,height=5) 
 ```
 
-For 70% of estimates to be within +/- 0.1 of the true correlation value (between -0.1 and 0.1), we need at least `r round(approx(y=nseq,x=res.pre[4,],xout=0.70)$y)` observations.
+For 70% of estimates to be within +/- 0.1 of the true correlation value (between 0.3 and 0.5), we need at least `r round(approx(y=nseq,x=res.pre[4,],xout=0.70)$y)` observations.
 
-For 90% of estimates to be within +/- 0.2 of the true correlation value (between -0.2 and 0.2), we need at least `r round(approx(y=nseq,x=res.pre[8,],xout=0.90)$y)` observations.
+For 90% of estimates to be within +/- 0.2 of the true correlation value (between 0.2 and 0.6), we need at least `r round(approx(y=nseq,x=res.pre[8,],xout=0.90)$y)` observations.
 
 # Probability to replicate an effect (rho=0.4)
 For a given precision, what is the probability to observe similar effects in two consecutive experiments? In other words, what is the probability that two measurements differ by at most a certain amount?
@@ -638,6 +691,7 @@ g <- 0
 h <- 0
 rho <- 0.4
 p <- 500 # 124750 correlations - sum(upper.tri(matrix(0, p, p), diag = FALSE))
+Nsim <- 10000
 ```
 
 ## Generate data
@@ -648,12 +702,20 @@ res.rep <- matrix(data = 0, nrow = Npre, ncol = Nn)
 
 for(iter.n in 1:Nn){
   print(paste0("Sample size = ", nseq[iter.n]))
-  data <- rmul(nseq[iter.n],p=p,cmat=diag(rep(1,p)),rho=rho,mar.fun=ghdist,OP=TRUE,g=g,h=h)
-  res <- cor(data, method = "pearson")
-  allcorr1 <- res[upper.tri(res, diag = FALSE)]
-  data <- rmul(nseq[iter.n],p=p,cmat=diag(rep(1,p)),rho=rho,mar.fun=ghdist,OP=TRUE,g=g,h=h)
-  res <- cor(data, method = "pearson")
-  allcorr2 <- res[upper.tri(res, diag = FALSE)]
+  
+  ## original code
+  # data <- rmul(nseq[iter.n],p=p,cmat=diag(rep(1,p)),rho=rho,mar.fun=ghdist,OP=TRUE,g=g,h=h)
+  # res <- cor(data, method = "pearson")
+  # allcorr1 <- res[upper.tri(res, diag = FALSE)]
+  # data <- rmul(nseq[iter.n],p=p,cmat=diag(rep(1,p)),rho=rho,mar.fun=ghdist,OP=TRUE,g=g,h=h)
+  # res <- cor(data, method = "pearson")
+  # allcorr2 <- res[upper.tri(res, diag = FALSE)]
+  
+  ## code suggested by Jan Vanhove:
+  # https://twitter.com/janhove/status/1002659890589061120/photo/1
+  allcorr1 <- replicate(Nsim, cor(MASS::mvrnorm(n = nseq[iter.n], mu = c(0,0), Sigma = matrix(c(1, rho, rho, 1), nrow = 2, byrow = TRUE)))[1,2])
+  
+  allcorr2 <- replicate(Nsim, cor(MASS::mvrnorm(n = nseq[iter.n], mu = c(0,0), Sigma = matrix(c(1, rho, rho, 1), nrow = 2, byrow = TRUE)))[1,2])
   
   # Probability of getting estimates at most x units of each other
   for(iter.p in 1:Npre){
@@ -689,7 +751,7 @@ df.seg2 <- tibble(x=tmp.pos, xend=tmp.pos,
 #                   y=0.9, yend=0)
 
 # make plot
-p <- ggplot(df, aes(x=Size, y=Proportion)) + theme_classic() +
+p <- ggplot(df, aes(x=Size, y=Proportion)) + theme_gar +
   # geom_abline(intercept=0.7, slope=0, colour="grey20") +
   geom_segment(data = df.seg1, aes(x=x, y=y, xend=xend, yend=yend)) +
   geom_segment(data = df.seg2, aes(x=x, y=y, xend=xend, yend=yend),
@@ -719,7 +781,7 @@ p <- ggplot(df, aes(x=Size, y=Proportion)) + theme_classic() +
 p
 
 # save figure
-ggsave(filename='./figures/figure_replication_rho04.png',width=9,height=5) 
+# ggsave(filename='./figures/figure_replication_rho04.png',width=9,height=5) 
 ```
 
 For 80% of replications to be at most 0.2 apart, we need at least `r round(approx(y=nseq,x=res.rep[4,],xout=0.8)$y)` observations.

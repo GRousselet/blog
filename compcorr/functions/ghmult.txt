@@ -48,3 +48,106 @@ matsqrt <- function(x) {
   y <- xval1 %*% xev1 %*% xval1i
   y
 }
+
+rngh<-function(n,rho=0,p=2,g=0,h=0,ADJ=TRUE){
+#
+# Generate data from a multivariate distribution where the marginal distributions
+#  are g-and-h distributions that have common correlation rho.
+# Strategy: adjust the correlation when generating data from multivariate normal distribution so that
+# when transforming the marginal distributions to a g-and-h distribution, the correlation is rho.
+#
+#
+require(MASS)
+if(ADJ){
+adjrho=rngh.sub(n,g,h,rho)$rho.adjusted #$
+rho=adjrho
+print(paste('Adjusted rho',rho))
+}
+cmat<-matrix(rho,p,p)
+diag(cmat)<-1
+x=mvrnorm(n=n, mu=rep(0,p), Sigma=cmat)
+for(i in 1:p){
+if (g>0){
+x[,i]<-(exp(g*x[,i])-1)*exp(h*x[,i]^2/2)/g
+}
+if(g==0)x[,i]<-x[,i]*exp(h*x[,i]^2/2)
+}
+x
+}
+
+
+rngh.sub<-function(n,g,h,rho){
+#
+# Determine adjusted value for rho so that
+# the actual correlation is some desired value
+#
+#  rho: desired correlation
+require(MASS)
+vals=seq(rho,.99,.01)
+for(i in 1:length(vals)){
+adj=vals[i]
+cmat<-matrix(vals[i],2,2)
+diag(cmat)<-1
+x=mvrnorm(1000000,mu=c(0,0),Sigma=cmat)
+for(i in 1:2){
+if (g>0){
+x[,i]<-(exp(g*x[,i])-1)*exp(h*x[,i]^2/2)/g
+}
+if(g==0)x[,i]<-x[,i]*exp(h*x[,i]^2/2)
+}
+chk=cor(x)
+if(abs(chk[1,2]-rho)<.01)break
+if(chk[1,2]>=rho)break
+}
+list(rho.adjusted=adj,rho.actual=chk[1,2])
+}
+
+rmul<-function(n,p=2,cmat=diag(rep(1,p)),rho=NA,
+mar.fun=ghdist,OP=FALSE,g=0,h=0,...){
+#
+# generate n observations from a p-variate dist
+# By default, use normal distributions.
+#
+# Can generate data form a g-and-h distribution via the arguments
+#  g and h
+#
+# Example rmul(30,p=4,rho=.3,g=.5,h=.2) will
+# generate 30 vectors from a 4-variate distribution where the marginals
+# have a g-and-h distribution with g=.5 and h=.2.
+#
+# This function is similar to ghmul, only here, generate the marginal values
+# and then transform the data to have correlation matrix cmat
+#
+# cmat is the correlation matrix
+# if argument
+# rho is specified, the correlations are taken to
+# have a this common value.
+#
+#OP= TRUE:
+# Method (e.g. Browne, M. W. (1968) A comparison of factor analytic
+# techniques. Psychometrika, 33, 267-334.
+#  Let U'U=R be the Cholesky decomposition of R. Generate independent data
+#  from some dist yielding X. Then XU has population correlation matrix R
+#
+#  OP=FALSE, use mvrnorm to generate data then transform marginals to g-and-h distribution.
+#
+if(!is.na(rho)){
+if(abs(rho)>1)stop("rho must be between -1 and 1")
+cmat<-matrix(rho,p,p)
+diag(cmat)<-1
+}
+if(OP){
+np<-n*p
+if(identical(mar.fun,ghdist))x<-matrix(mar.fun(np,g=g,h=h),nrow=n,ncol=p)
+else x<-matrix(mar.fun(np,...),nrow=n,ncol=p)
+rmat<-matsqrt(cmat)
+x<-x%*%rmat
+}
+if(!OP){
+library(MASS)
+x=mvrnorm(n,rep(0,p),cmat)
+if(g==0)x=x*exp(h*x^2/2)
+if(g>0)x=(exp(g*x)-1)*exp(h*x^2/2)/g
+}
+x
+}
