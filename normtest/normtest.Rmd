@@ -19,8 +19,7 @@ output:
 library(tibble)
 library(ggplot2)
 library(KernSmooth)
-library(car)
-library(beepr)
+# library(beepr)
 ```
 
 # g & h distributions
@@ -49,7 +48,7 @@ ghdist <- function(n,g=0,h=0){
 
 ### Generate pdfs (probability density functions)
 
-There are methods to generate pdfs using parametric approaches, but there is no simple implementation for g-and-h distributions, no straighforward equivalent to `dnorm` or `dlnorm`. The R package `gk` offers generalised g-and-h and g-and-k distributions, but these distributions do not contain the original Tukey g-and-h distributions as a special case. The package `tukeyGH` offers what we want, but produces weird wavy distortions near the ends of the distributions. So here to illustrate the pdfs, I simply create large samples, estimate their densities, and plot them.  
+There are methods to generate pdfs using parametric approaches, but there is no simple implementation for g-and-h distributions, no straighforward equivalent to `dnorm` or `dlnorm`. The R package `gk` offers generalised g-and-h and g-and-k distributions, but these distributions do not contain the original Tukey g-and-h distributions as a special case. The package `tukeyGH` offers what we want, but produces weird wavy distortions near the ends of the distributions. So here to illustrate the pdfs, I simply create large samples, estimate their densities using a narrow box kernel, and plot them.  
 
 The next code chunk is slow to run because of the large sample size required to estimate smooth pdfs without edge distortions. Results have been saved and can be loaded in the following chunk.
 
@@ -373,7 +372,6 @@ https://en.wikipedia.org/wiki/Kolmogorov–Smirnov_test
 
 Shapiro-Wilk test
 https://en.wikipedia.org/wiki/Shapiro–Wilk_test
-
 
 
 
