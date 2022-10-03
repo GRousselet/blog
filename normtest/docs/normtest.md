@@ -1,7 +1,7 @@
 Normality tests: false positives and power curves
 ================
 Guillaume A. Rousselet
-2022-09-30
+2022-10-03
 
 -   <a href="#dependencies" id="toc-dependencies">Dependencies</a>
 -   <a href="#g--h-distributions" id="toc-g--h-distributions">g &amp; h
@@ -34,13 +34,7 @@ library(KernSmooth)
     ## Copyright M. P. Wand 1997-2009
 
 ``` r
-library(car)
-```
-
-    ## Loading required package: carData
-
-``` r
-library(beepr)
+# library(beepr)
 ```
 
 # g & h distributions
@@ -81,7 +75,7 @@ distributions do not contain the original Tukey g-and-h distributions as
 a special case. The package `tukeyGH` offers what we want, but produces
 weird wavy distortions near the ends of the distributions. So here to
 illustrate the pdfs, I simply create large samples, estimate their
-densities, and plot them.
+densities using a narrow box kernel, and plot them.
 
 The next code chunk is slow to run because of the large sample size
 required to estimate smooth pdfs without edge distortions. Results have
