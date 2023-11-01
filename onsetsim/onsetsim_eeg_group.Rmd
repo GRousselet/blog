@@ -1,0 +1,187 @@
+---
+title: "Estimating group onsets using cluster statistics: simulation using EEG-like noise"
+author: "Guillaume A. Rousselet"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    fig_caption: no
+    number_sections: no
+    toc: yes
+    toc_depth: 2
+    # github_document:
+    # html_preview: yes
+    # toc: yes
+    # toc_depth: 2
+---
+
+# Dependencies
+```{r, message=FALSE}
+library(ggplot2)
+library(tibble)
+library(changepoint)
+library(cowplot)
+library(beepr)
+library(Rfast)
+source("./code/functions.R")
+source("./code/theme_gar.txt")
+# Load template: true onset = 160 ms, F=17, max at F=26
+source("./code/erp_template.R")
+# R version of Matlab code from Yeung et al. 2004
+source("./code/eeg_noise.R")
+# to use with eeg_noise function
+meanpower <- unlist(read.table("./code/meanpower.txt"))
+```
+
+# Simulate group estimates
+
+20 participants. Group estimate = median of 20 onsets.
+On each iteration, each participant has a random onset of 150, 160 or 170 ms, drawn from uniform distribution. 
+
+```{r, eval=FALSE, warning=FALSE}
+set.seed(666)
+aath <- 0.05 # arbitrary alpha threshold
+nsim <- 10000 # simulation iterations
+nboot <- 2000 # number of permutation samples
+inc.step <- 500 # console notification every inc.step iterations
+
+Nt <- 50 # number of trials
+Np <- 20 # number of participants
+outvar <- 1 # noise variance
+
+cond1 <- matrix(0, nrow = Nt, ncol = Nf)
+cond2 <- matrix(0, nrow = Nt, ncol = Nf)
+
+simres.cp <- matrix(NA, nrow = Np, ncol = nsim)
+simres.fdr <- matrix(NA, nrow = Np, ncol = nsim)
+simres.max <- matrix(NA, nrow = Np, ncol = nsim)
+simres.cs <- matrix(NA, nrow = Np, ncol = nsim)
+
+for(S in 1:nsim){
+  
+  sim.counter(S, nsim, inc = inc.step)
+  
+  for(P in 1:Np){ # participants
+    
+    todo <- runif(1)
+    if(todo <= 1/3)temp2<-c(rep(0, 14), erp, rep(0, 16)) # 150 onset
+    if(todo >= 2/3)temp2<-c(rep(0, 15), erp, rep(0, 15)) # 160 onset
+    if(todo > 1/3 && todo < 2/3)temp2<-c(rep(0, 16), erp, rep(0, 14)) # 170 onset
+    # plot(Xf, temp2)
+    
+    for(T in 1:Nt){
+      cond2[T,] <- temp2 + eeg_noise(frames = Nf, srate = 100, outvar = outvar, meanpower)
+      cond1[T,] <- temp1 + eeg_noise(frames = Nf, srate = 100, outvar = outvar, meanpower)
+    }
+    
+    # t-tests
+    ori.t2 <- vector(mode = "numeric", length = Nf)
+    for(F in 1:Nf){
+      ori.t2[F] <- t.test(cond1[,F], cond2[,F])$statistic^2
+    }
+    # fit change point model
+    res <- cpt.meanvar(ori.t2, method = "BinSeg", Q=2)
+    simres.cp[P,S] <- Xf[res@cpts[1]]
+    
+    # Make permutation table of t values 
+    perm.t2 <- permtdist(cond1, cond2, Nt, Nf, nboot = nboot)^2
+    perm.th <- apply(perm.t2, 2, quantile, probs = 1-aath)
+    
+    # FDR -----
+    perm.pvals <- vector(mode = "numeric", length = Nf)
+    for(F in 1:Nf){
+      perm.pvals[F] <- (sum(perm.t2[,F] >= ori.t2[F]) + 1) / (nboot + 1)
+    }
+    fdr.pvals <- p.adjust(perm.pvals, method = "fdr")
+    simres.fdr[P,S] <- Xf[which(fdr.pvals <= aath)[1]]
+    
+    # MAX -----
+    max.th <- quantile(apply(perm.t2, 1, max), probs = 1-aath)
+    simres.max[P,S] <- Xf[which(ori.t2 >= max.th)[1]]
+    
+    # cluster-sum statistics -----
+    cmap <- cluster.make(perm.pvals <= aath)
+    perm.max.sums <- vector(mode = "numeric", length = nboot)
+    for(B in 1:nboot){
+      # threshold permutation t2 values and form clusters
+      perm.cmap <- cluster.make(perm.t2[B,] <= perm.th)  
+      perm.max.sums[B] <- max(cluster.sum(values = perm.t2[B,], cmap = perm.cmap))
+    }
+    # cluster sum threshold
+    cs.th <- quantile(perm.max.sums, probs = 1-aath)
+    # cluster test
+    cs.test <- cluster.test(values = ori.t2, cmap = cmap, cs.th)
+    simres.cs[P,S] <- Xf[cs.test][1]
+  }
+}
+
+save(simres.cs, simres.max, simres.fdr, simres.cp,
+     file = "./data/onsetsim_n50_eeg_group20.RData")
+```
+
+## Plot onset distributions
+
+```{r, warning=FALSE}
+load("./data/onsetsim_n50_eeg_group20.RData")
+# compute group medians
+simres.cs <- apply(simres.cs, 2, median, na.rm = TRUE)
+simres.cp <- apply(simres.cp, 2, median, na.rm = TRUE)
+simres.max <- apply(simres.max, 2, median, na.rm = TRUE)
+simres.fdr <- apply(simres.fdr, 2, median, na.rm = TRUE)
+
+# compute group 20% trimmed means
+# simres.cs <- apply(simres.cs, 2, mean, na.rm = TRUE, trim = 0.2)
+# simres.cp <- apply(simres.cp, 2, mean, na.rm = TRUE, trim = 0.2)
+# simres.max <- apply(simres.max, 2, mean, na.rm = TRUE, trim = 0.2)
+# simres.fdr <- apply(simres.fdr, 2, mean, na.rm = TRUE, trim = 0.2)
+
+# Colour palette from http://www.cookbook-r.com/Graphs/Colors_(ggplot2)/
+categ.palette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+df <- tibble(onsets = c(simres.cp, simres.cs, simres.fdr, simres.max),
+             method = factor(c(rep("change point", length(simres.cp)),
+                               rep("cluster sum", length(simres.cs)),
+                               rep("FDR", length(simres.fdr)),
+                               rep("MAX", length(simres.max))))
+)
+
+ggplot(data = df, aes(x = onsets, colour = method)) + theme_gar +
+  # stat_density(geom = "line") +
+  geom_freqpoly(fill = "white", na.rm = TRUE, breaks = Xf) +
+  geom_vline(xintercept = true_onset, linetype = "dashed") +
+  # geom_vline(xintercept = median(simres.cp, na.rm = TRUE))
+  scale_colour_manual(values = categ.palette) +
+  theme(legend.position = c(.8, .8)) +
+  labs(x = "Group median onsets in ms", y = "Count") +
+  coord_cartesian(xlim = c(100, 300))
+
+ggsave(filename = "./figures/eeg_group_onset_dist.pdf", width = 10, height = 5)
+```
+
+## Bias
+```{r}
+print("Bias:")
+print(paste("FDR =",median(simres.fdr, na.rm = TRUE) - true_onset))
+print(paste("MAX =",median(simres.max, na.rm = TRUE) - true_onset))
+print(paste("Cluster =",median(simres.cs, na.rm = TRUE) - true_onset))
+print(paste("Change point =",median(simres.cp, na.rm = TRUE) - true_onset))
+```
+
+## Mean absolute error 
+
+```{r}
+print("MAE:")
+print(paste("FDR =",round(mean(abs(simres.fdr - true_onset), na.rm = TRUE), digits=0)))
+print(paste("MAX =",round(mean(abs(simres.max - true_onset), na.rm = TRUE), digits=0)))
+print(paste("Cluster =",round(mean(abs(simres.cs - true_onset), na.rm = TRUE), digits=0)))
+print(paste("Change point =",round(mean(abs(simres.cp - true_onset), na.rm = TRUE), digits=0)))
+```
+
+## Proportion too early
+```{r}
+print("Proportion too early:")
+print(paste("FDR =",round(100*mean((simres.fdr - true_onset) < 0, na.rm = TRUE), digits=2),"%"))
+print(paste("MAX =",round(100*mean((simres.max - true_onset) < 0, na.rm = TRUE), digits=2),"%"))
+print(paste("Cluster =",round(100*mean((simres.cs - true_onset) < 0, na.rm = TRUE), digits=2),"%"))
+print(paste("Change point =",round(100*mean((simres.cp - true_onset) < 0, na.rm = TRUE), digits=2),"%"))
+```
+

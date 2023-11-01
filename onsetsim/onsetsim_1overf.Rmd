@@ -1,0 +1,376 @@
+---
+title: "Estimating onsets using cluster statistics: simulation"
+author: "Guillaume A. Rousselet"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    fig_caption: no
+    number_sections: no
+    toc: yes
+    toc_depth: 2
+    # github_document:
+    # html_preview: yes
+    # toc: yes
+    # toc_depth: 2
+---
+
+# Dependencies
+```{r, message=FALSE}
+library(ggplot2)
+library(tibble)
+library(changepoint)
+library(cowplot)
+library(beepr)
+library(Rfast)
+source("./code/functions.R")
+source("./code/theme_gar.txt")
+# Edit `one_over_f` function from `primer` package to control variance (Stevens, 2009). 
+# Original function is available on [GitHub](https://github.com/HankStevens/primer).
+# Copyright Hank Stevens.
+source("./code/one_over_f.R")
+# Load template: true onset = 160 ms, F=17, max at F=26
+source("./code/erp_template.R")
+```
+
+# Simulation: one gamma value
+
+```{r, eval=FALSE, warning=FALSE}
+set.seed(666)
+aath <- 0.05 # arbitrary alpha threshold
+nsim <- 10000 # simulation iterations
+nboot <- 2000 # number of permutation samples
+inc.step <- 500 # console notification every inc.step iterations
+simres.cp <- vector(mode = "numeric", length = nsim) * NA
+simres.fdr <- vector(mode = "numeric", length = nsim) * NA
+simres.max <- vector(mode = "numeric", length = nsim) * NA 
+simres.cs <- vector(mode = "numeric", length = nsim) * NA
+
+Nt <- 50 # number of trials
+gsp <- 1 # gamma spectral power
+outvar <- 1 # noise variance
+cond1 <- matrix(0, nrow = Nt, ncol = Nf)
+cond2 <- matrix(0, nrow = Nt, ncol = Nf)
+
+for(S in 1:nsim){
+  
+  sim.counter(S, nsim, inc = inc.step)
+  
+  for(T in 1:Nt){
+    cond2[T,] <- temp2 + one_over_f(gamma = gsp, Nf, outvar = outvar)
+    cond1[T,] <- temp1 + one_over_f(gamma = gsp, Nf, outvar = outvar)  
+  }
+  
+  # t-tests
+  ori.t2 <- vector(mode = "numeric", length = Nf)
+  for(F in 1:Nf){
+    ori.t2[F] <- t.test(cond1[,F], cond2[,F])$statistic^2
+  }
+  # fit change point model
+  res <- cpt.meanvar(ori.t2, method = "BinSeg", Q=2)
+  simres.cp[S] <- Xf[res@cpts[1]]
+  
+  # Make permutation table of t values 
+  perm.t2 <- permtdist(cond1, cond2, Nt, Nf, nboot = nboot)^2
+  perm.th <- apply(perm.t2, 2, quantile, probs = 1-aath)
+  
+  # FDR -----
+  perm.pvals <- vector(mode = "numeric", length = Nf)
+  for(F in 1:Nf){
+    perm.pvals[F] <- (sum(perm.t2[,F] >= ori.t2[F]) + 1) / (nboot + 1)
+  }
+  fdr.pvals <- p.adjust(perm.pvals, method = "fdr")
+  simres.fdr[S] <- Xf[which(fdr.pvals <= aath)[1]]
+  
+  # MAX -----
+  max.th <- quantile(apply(perm.t2, 1, max), probs = 1-aath)
+  simres.max[S] <- Xf[which(ori.t2 >= max.th)[1]]
+  
+  # cluster-sum statistics -----
+  cmap <- cluster.make(perm.pvals <= aath)
+  perm.max.sums <- vector(mode = "numeric", length = nboot)
+  for(B in 1:nboot){
+    # threshold permutation t2 values and form clusters
+    perm.cmap <- cluster.make(perm.t2[B,] <= perm.th)  
+    perm.max.sums[B] <- max(cluster.sum(values = perm.t2[B,], cmap = perm.cmap))
+  }
+  # cluster sum threshold
+  cs.th <- quantile(perm.max.sums, probs = 1-aath)
+  # cluster test
+  cs.test <- cluster.test(values = ori.t2, cmap = cmap, cs.th)
+  simres.cs[S] <- Xf[cs.test][1]
+}
+
+save(simres.cs, simres.max, simres.fdr, simres.cp,
+     file = "./data/onsetsim_n50_gamma1.RData")
+```
+
+## Plot onset distributions
+
+```{r, warning=FALSE}
+load("./data/onsetsim_n50_gamma1.RData")
+# remove missing values
+# simres.cs <- simres.cs[is.finite(simres.cs)]
+# simres.cp <- simres.cp[is.finite(simres.cp)]
+# simres.max <- simres.max[is.finite(simres.max)]
+# simres.fdr <- simres.fdr[is.finite(simres.fdr)]
+
+# Colour palette from http://www.cookbook-r.com/Graphs/Colors_(ggplot2)/
+categ.palette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+df <- tibble(onsets = c(simres.cp, simres.cs, simres.fdr, simres.max),
+             method = factor(c(rep("change point", length(simres.cp)),
+                               rep("cluster sum", length(simres.cs)),
+                               rep("FDR", length(simres.fdr)),
+                               rep("MAX", length(simres.max))))
+)
+
+ggplot(data = df, aes(x = onsets, colour = method)) + theme_gar +
+  # stat_density(geom = "line") +
+  geom_freqpoly(fill = "white", na.rm = TRUE, breaks = Xf) +
+  geom_vline(xintercept = true_onset, linetype = "dashed") +
+  # geom_vline(xintercept = median(simres.cp, na.rm = TRUE))
+  scale_colour_manual(values = categ.palette) +
+  theme(legend.position = c(.8, .8)) +
+  labs(x = "Onsets in ms", y = "Count")
+```
+
+## Bias
+```{r}
+print("Bias:")
+print(paste("FDR =",median(simres.fdr, na.rm = TRUE) - true_onset))
+print(paste("MAX =",median(simres.max, na.rm = TRUE) - true_onset))
+print(paste("Cluster =",median(simres.cs, na.rm = TRUE) - true_onset))
+print(paste("Change point =",median(simres.cp, na.rm = TRUE) - true_onset))
+```
+
+## Mean absolute error 
+
+```{r}
+print("MAE:")
+print(paste("FDR =",round(mean(abs(simres.fdr - true_onset), na.rm = TRUE), digits=0)))
+print(paste("MAX =",round(mean(abs(simres.max - true_onset), na.rm = TRUE), digits=0)))
+print(paste("Cluster =",round(mean(abs(simres.cs - true_onset), na.rm = TRUE), digits=0)))
+print(paste("Change point =",round(mean(abs(simres.cp - true_onset), na.rm = TRUE), digits=0)))
+```
+
+## Proportion too early
+```{r}
+print("Proportion too early:")
+print(paste("FDR =",round(100*mean((simres.fdr - true_onset) < 0, na.rm = TRUE), digits=1),"%"))
+print(paste("MAX =",round(100*mean((simres.max - true_onset) < 0, na.rm = TRUE), digits=1),"%"))
+print(paste("Cluster =",round(100*mean((simres.cs - true_onset) < 0, na.rm = TRUE), digits=1),"%"))
+print(paste("Change point =",round(100*mean((simres.cp - true_onset) < 0, na.rm = TRUE), digits=1),"%"))
+```
+
+## Underestimations of at least 40 ms
+```{r}
+print("Underestimations of at least 40 ms:")
+print(paste("FDR =",round(100*mean((simres.fdr - true_onset) <= -40, na.rm = TRUE), digits=1),"%"))
+print(paste("MAX =",round(100*mean((simres.max - true_onset) <= -40, na.rm = TRUE), digits=1),"%"))
+print(paste("Cluster =",round(100*mean((simres.cs - true_onset) <= -40, na.rm = TRUE), digits=1),"%"))
+print(paste("Change point =",round(100*mean((simres.cp - true_onset) <= -40, na.rm = TRUE), digits=1),"%"))
+```
+
+# Simulation: vary gamma
+
+Here we vary gamma from zero to two in steps of 0.2
+
+```{r, eval=FALSE, warning=FALSE}
+
+aath <- 0.05 # arbitrary alpha threshold
+nsim <- 10000 # simulation iterations
+nboot <- 2000 # number of permutation samples
+inc.step <- 1 # console notification every inc.step iterations
+gamma_vec <- seq(0,2,0.2) # gamma from 0 = white noise to 1 = pink noise
+gamma_length <- length(gamma_vec)
+
+simres.cp <- matrix(NA, nrow = gamma_length, ncol = nsim)
+simres.fdr <- matrix(NA, nrow = gamma_length, ncol = nsim)
+simres.max <- matrix(NA, nrow = gamma_length, ncol = nsim)
+simres.cs <- matrix(NA, nrow = gamma_length, ncol = nsim)
+
+Nt <- 50 # number of trials
+outvar <- 1 # noise variance
+cond1 <- matrix(0, nrow = Nt, ncol = Nf)
+cond2 <- matrix(0, nrow = Nt, ncol = Nf)
+
+for(G in 1:gamma_length){
+  
+  set.seed(666) # set seed here so results are directly comparable across gamma values    
+  gsp <- gamma_vec[G] # gamma spectral power
+  sim.counter(G, gamma_length, inc = inc.step)
+  
+  for(S in 1:nsim){
+    
+    for(T in 1:Nt){
+      cond2[T,] <- temp2 + one_over_f(gamma = gsp, Nf, outvar = outvar)
+      cond1[T,] <- temp1 + one_over_f(gamma = gsp, Nf, outvar = outvar)  
+    }
+    
+    # t-tests
+    ori.t2 <- vector(mode = "numeric", length = Nf)
+    for(F in 1:Nf){
+      ori.t2[F] <- t.test(cond1[,F], cond2[,F])$statistic^2
+    }
+    # fit change point model
+    res <- cpt.meanvar(ori.t2, method = "BinSeg", Q=2)
+    simres.cp[G,S] <- Xf[res@cpts[1]]
+    
+    # Make permutation table of t values 
+    perm.t2 <- permtdist(cond1, cond2, Nt, Nf, nboot = nboot)^2
+    perm.th <- apply(perm.t2, 2, quantile, probs = 1-aath)
+    
+    # FDR -----
+    perm.pvals <- vector(mode = "numeric", length = Nf)
+    for(F in 1:Nf){
+      perm.pvals[F] <- (sum(perm.t2[,F] >= ori.t2[F]) + 1) / (nboot + 1)
+    }
+    fdr.pvals <- p.adjust(perm.pvals, method = "fdr")
+    simres.fdr[G,S] <- Xf[which(fdr.pvals <= aath)[1]]
+    
+    # MAX -----
+    max.th <- quantile(apply(perm.t2, 1, max), probs = 1-aath)
+    simres.max[G,S] <- Xf[which(ori.t2 >= max.th)[1]]
+    
+    # cluster-sum statistics -----
+    cmap <- cluster.make(perm.pvals <= aath)
+    perm.max.sums <- vector(mode = "numeric", length = nboot)
+    for(B in 1:nboot){
+      # threshold permutation t2 values and form clusters
+      perm.cmap <- cluster.make(perm.t2[B,] <= perm.th)  
+      perm.max.sums[B] <- max(cluster.sum(values = perm.t2[B,], cmap = perm.cmap))
+    }
+    # cluster sum threshold
+    cs.th <- quantile(perm.max.sums, probs = 1-aath)
+    # cluster test
+    cs.test <- cluster.test(values = ori.t2, cmap = cmap, cs.th)
+    simres.cs[G,S] <- Xf[cs.test][1]
+  }
+}
+
+save(simres.cs, simres.max, simres.fdr, simres.cp,
+     file = "./data/onsetsim_t2_n50_var1_gammavar.RData")
+```
+
+## Results
+
+Plot results as a function of gamma values.
+
+### Compute summary statistics
+```{r}
+load(file = "./data/onsetsim_t2_n50_var1_gammavar.RData")
+
+gamma_vec <- seq(0,2,0.2) # gamma from 0 = white noise to 1 = pink noise
+gamma_length <- length(gamma_vec)
+
+res.bias <- matrix(0, nrow = 4, ncol = gamma_length) 
+res.mae <- matrix(0, nrow = 4, ncol = gamma_length)
+res.pte <- matrix(0, nrow = 4, ncol = gamma_length)
+res.p40 <- matrix(0, nrow = 4, ncol = gamma_length)
+
+for(G in 1:gamma_length){
+  #Bias
+  res.bias[1,G] <- median(simres.fdr[G,], na.rm = TRUE) - true_onset
+  res.bias[2,G] <- median(simres.max[G,], na.rm = TRUE) - true_onset
+  res.bias[3,G] <- median(simres.cs[G,], na.rm = TRUE) - true_onset
+  res.bias[4,G] <- median(simres.cp[G,], na.rm = TRUE) - true_onset
+  
+  #Mean absolute error 
+  res.mae[1,G] <- mean(abs(simres.fdr[G,] - true_onset), na.rm = TRUE)
+  res.mae[2,G] <- mean(abs(simres.max[G,] - true_onset), na.rm = TRUE)
+  res.mae[3,G] <- mean(abs(simres.cs[G,] - true_onset), na.rm = TRUE)
+  res.mae[4,G] <- mean(abs(simres.cp[G,] - true_onset), na.rm = TRUE)
+  
+  #Proportion too early
+  res.pte[1,G] <- mean((simres.fdr[G,] - true_onset) < 0, na.rm = TRUE)
+  res.pte[2,G] <- mean((simres.max[G,] - true_onset) < 0, na.rm = TRUE)
+  res.pte[3,G] <- mean((simres.cs[G,] - true_onset) < 0, na.rm = TRUE)
+  res.pte[4,G] <- mean((simres.cp[G,] - true_onset) < 0, na.rm = TRUE)
+  
+  #Underestimations of at least 40 ms
+  res.p40[1,G] <- mean((simres.fdr[G,] - true_onset) <= -40, na.rm = TRUE)
+  res.p40[2,G] <- mean((simres.max[G,] - true_onset) <= -40, na.rm = TRUE)
+  res.p40[3,G] <- mean((simres.cs[G,] - true_onset) <= -40, na.rm = TRUE)
+  res.p40[4,G] <- mean((simres.cp[G,] - true_onset) <= -40, na.rm = TRUE)
+}
+```
+
+### Make figures
+
+#### Bias
+
+Cluster sum = FDR = 30 ms.
+```{r}
+# Colour palette from http://www.cookbook-r.com/Graphs/Colors_(ggplot2)/
+categ.palette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+df <- tibble(res = as.vector(res.bias),
+             gamma = rep(gamma_vec, each = 4),
+             method = rep(c("FDR", "MAX", "Cluster sum", "Change point"), gamma_length)
+)
+
+ggplot(df, aes(x = gamma, y = res, group = method, colour = method)) + theme_gar +
+  geom_point() +
+  geom_line() +
+  scale_colour_manual(values = categ.palette) +
+  ylab("Bias") +
+  scale_x_continuous(breaks = gamma_vec)
+```
+
+#### MAE
+
+```{r}
+df <- tibble(res = as.vector(res.mae),
+             gamma = rep(gamma_vec, each = 4),
+             method = rep(c("FDR", "MAX", "Cluster sum", "Change point"), gamma_length)
+)
+
+ggplot(df, aes(x = gamma, y = res, group = method, colour = method)) + theme_gar +
+  geom_point() +
+  geom_line() +
+  scale_colour_manual(values = categ.palette) +
+  ylab("MAE") +
+  scale_x_continuous(breaks = gamma_vec)
+```
+
+#### Proportion too early
+
+```{r}
+df <- tibble(res = as.vector(res.pte),
+             gamma = rep(gamma_vec, each = 4),
+             method = rep(c("FDR", "MAX", "Cluster sum", "Change point"), gamma_length)
+)
+
+ggplot(df, aes(x = gamma, y = res, group = method, colour = method)) + theme_gar +
+  geom_point() +
+  geom_line() +
+  scale_colour_manual(values = categ.palette) +
+  ylab("Proportion too early") +
+  scale_x_continuous(breaks = gamma_vec)
+```
+
+#### Proportion < 40 ms
+
+```{r}
+df <- tibble(res = as.vector(res.p40),
+             gamma = rep(gamma_vec, each = 4),
+             method = rep(c("FDR", "MAX", "Cluster sum", "Change point"), gamma_length)
+)
+
+ggplot(df, aes(x = gamma, y = res, group = method, colour = method)) + theme_gar +
+  geom_point() +
+  geom_line() +
+  scale_colour_manual(values = categ.palette) +
+  ylab("Proportion < 40ms") +
+  scale_x_continuous(breaks = gamma_vec)
+```
+
+## References
+
+Stevens, M.H.H. (2009) A Primer of Ecology with R, 2nd Printing. Springer, New York.
+
+
+
+
+
+

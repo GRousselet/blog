@@ -1,0 +1,385 @@
+---
+title: "Estimating onsets using cluster statistics: simulation using EEG-like noise"
+author: "Guillaume A. Rousselet"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    fig_caption: no
+    number_sections: no
+    toc: yes
+    toc_depth: 2
+    # github_document:
+    # html_preview: yes
+    # toc: yes
+    # toc_depth: 2
+---
+
+# Dependencies
+```{r, message=FALSE}
+library(ggplot2)
+library(tibble)
+# library(Rbeast)
+library(changepoint)
+library(cowplot)
+library(beepr)
+library(Rfast)
+source("./code/functions.R")
+source("./code/theme_gar.txt")
+# Load template: true onset = 160 ms, F=17, max at F=26
+source("./code/erp_template.R")
+# R version of Matlab code from Yeung et al. 2004
+source("./code/eeg_noise.R")
+# to use with eeg_noise function
+meanpower <- unlist(read.table("./code/meanpower.txt"))
+```
+
+# Simulation: EEG noise
+
+Using more realistic EEG noise from Yeung et al. (2004).
+
+```{r, eval=FALSE, warning=FALSE}
+set.seed(666)
+aath <- 0.05 # arbitrary alpha threshold
+nsim <- 10000 # simulation iterations
+nboot <- 2000 # number of permutation samples
+inc.step <- 500 # console notification every inc.step iterations
+simres.cp <- vector(mode = "numeric", length = nsim) * NA
+simres.fdr <- vector(mode = "numeric", length = nsim) * NA
+simres.max <- vector(mode = "numeric", length = nsim) * NA 
+simres.cs <- vector(mode = "numeric", length = nsim) * NA
+
+Nt <- 50 # number of trials
+outvar <- 1 # noise variance
+cond1 <- matrix(0, nrow = Nt, ncol = Nf)
+cond2 <- matrix(0, nrow = Nt, ncol = Nf)
+
+for(S in 1:nsim){
+  
+  sim.counter(S, nsim, inc = inc.step)
+  
+  for(T in 1:Nt){
+    cond2[T,] <- temp2 + eeg_noise(frames = Nf, srate = 100, outvar = outvar, meanpower)
+    cond1[T,] <- temp1 + eeg_noise(frames = Nf, srate = 100, outvar = outvar, meanpower) 
+  }
+  
+  # t-tests
+  ori.t2 <- vector(mode = "numeric", length = Nf)
+  for(F in 1:Nf){
+    ori.t2[F] <- t.test(cond1[,F], cond2[,F])$statistic^2
+  }
+  # fit change point model
+  res <- cpt.meanvar(ori.t2, method = "BinSeg", Q=2)
+  simres.cp[S] <- Xf[res@cpts[1]]
+  
+  # Make permutation table of t values 
+  perm.t2 <- permtdist(cond1, cond2, Nt, Nf, nboot = nboot)^2
+  perm.th <- apply(perm.t2, 2, quantile, probs = 1-aath)
+  
+  # FDR -----
+  perm.pvals <- vector(mode = "numeric", length = Nf)
+  for(F in 1:Nf){
+    perm.pvals[F] <- (sum(perm.t2[,F] >= ori.t2[F]) + 1) / (nboot + 1)
+  }
+  fdr.pvals <- p.adjust(perm.pvals, method = "fdr")
+  simres.fdr[S] <- Xf[which(fdr.pvals <= aath)[1]]
+  
+  # MAX -----
+  max.th <- quantile(apply(perm.t2, 1, max), probs = 1-aath)
+  simres.max[S] <- Xf[which(ori.t2 >= max.th)[1]]
+  
+  # cluster-sum statistics -----
+  cmap <- cluster.make(perm.pvals <= aath)
+  perm.max.sums <- vector(mode = "numeric", length = nboot)
+  for(B in 1:nboot){
+    # threshold permutation t2 values and form clusters
+    perm.cmap <- cluster.make(perm.t2[B,] <= perm.th)  
+    perm.max.sums[B] <- max(cluster.sum(values = perm.t2[B,], cmap = perm.cmap))
+  }
+  # cluster sum threshold
+  cs.th <- quantile(perm.max.sums, probs = 1-aath)
+  # cluster test
+  cs.test <- cluster.test(values = ori.t2, cmap = cmap, cs.th)
+  simres.cs[S] <- Xf[cs.test][1]
+}
+
+save(simres.cs, simres.max, simres.fdr, simres.cp,
+     file = "./data/onsetsim_n50_eegnoise.RData")
+```
+
+## Plot onset distributions
+
+```{r, warning=FALSE}
+load("./data/onsetsim_n50_eegnoise.RData")
+
+# Colour palette from http://www.cookbook-r.com/Graphs/Colors_(ggplot2)/
+categ.palette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+df <- tibble(onsets = c(simres.cp, simres.cs, simres.fdr, simres.max),
+             method = factor(c(rep("change point", length(simres.cp)),
+                               rep("cluster sum", length(simres.cs)),
+                               rep("FDR", length(simres.fdr)),
+                               rep("MAX", length(simres.max))))
+)
+
+ggplot(data = df, aes(x = onsets, colour = method)) + theme_gar +
+  # stat_density(geom = "line") +
+  geom_freqpoly(fill = "white", na.rm = TRUE, breaks = Xf) +
+  geom_vline(xintercept = true_onset, linetype = "dashed") +
+  # geom_vline(xintercept = median(simres.cp, na.rm = TRUE))
+  scale_colour_manual(values = categ.palette) +
+  theme(legend.position = c(.8, .8)) +
+  labs(x = "Onsets in ms", y = "Count")
+
+ggsave(filename = "./figures/eeg_onset_dist.pdf", width = 10, height = 5)
+```
+
+## Bias
+```{r}
+print("Bias:")
+print(paste("FDR =",median(simres.fdr, na.rm = TRUE) - true_onset))
+print(paste("MAX =",median(simres.max, na.rm = TRUE) - true_onset))
+print(paste("Cluster =",median(simres.cs, na.rm = TRUE) - true_onset))
+print(paste("Change point =",median(simres.cp, na.rm = TRUE) - true_onset))
+```
+
+## Mean absolute error 
+
+```{r}
+print("MAE:")
+print(paste("FDR =",round(mean(abs(simres.fdr - true_onset), na.rm = TRUE), digits=0)))
+print(paste("MAX =",round(mean(abs(simres.max - true_onset), na.rm = TRUE), digits=0)))
+print(paste("Cluster =",round(mean(abs(simres.cs - true_onset), na.rm = TRUE), digits=0)))
+print(paste("Change point =",round(mean(abs(simres.cp - true_onset), na.rm = TRUE), digits=0)))
+```
+
+## Proportion too early
+```{r}
+print("Proportion too early:")
+print(paste("FDR =",round(100*mean((simres.fdr - true_onset) < 0, na.rm = TRUE), digits=1),"%"))
+print(paste("MAX =",round(100*mean((simres.max - true_onset) < 0, na.rm = TRUE), digits=1),"%"))
+print(paste("Cluster =",round(100*mean((simres.cs - true_onset) < 0, na.rm = TRUE), digits=1),"%"))
+print(paste("Change point =",round(100*mean((simres.cp - true_onset) < 0, na.rm = TRUE), digits=1),"%"))
+```
+
+## Underestimations of at least 40 ms
+```{r}
+print("Underestimations of at least 40 ms:")
+print(paste("FDR =",round(100*mean((simres.fdr - true_onset) <= -40, na.rm = TRUE), digits=1),"%"))
+print(paste("MAX =",round(100*mean((simres.max - true_onset) <= -40, na.rm = TRUE), digits=1),"%"))
+print(paste("Cluster =",round(100*mean((simres.cs - true_onset) <= -40, na.rm = TRUE), digits=1),"%"))
+print(paste("Change point =",round(100*mean((simres.cp - true_onset) <= -40, na.rm = TRUE), digits=1),"%"))
+```
+
+# Simulation: vary sample size
+
+```{r, eval=FALSE, warning=FALSE}
+set.seed(666) 
+aath <- 0.05 # arbitrary alpha threshold
+nsim <- 10000 # simulation iterations
+nboot <- 2000 # number of permutation samples
+inc.step <- 500 # console notification every inc.step iterations
+n_vec <- seq(20,150,10) 
+n_length <- length(n_vec)
+n_max <- max(n_vec)
+
+simres.cp <- matrix(NA, nrow = n_length, ncol = nsim)
+simres.fdr <- matrix(NA, nrow = n_length, ncol = nsim)
+simres.max <- matrix(NA, nrow = n_length, ncol = nsim)
+simres.cs <- matrix(NA, nrow = n_length, ncol = nsim)
+
+Nt <- 50 # number of trials
+outvar <- 1 # noise variance
+cond1_all <- matrix(0, nrow = n_max, ncol = Nf)
+cond2_all <- matrix(0, nrow = n_max, ncol = Nf)
+
+for(S in 1:nsim){
+  
+  sim.counter(S, nsim, inc = inc.step)
+  
+  # Generate all trials
+  for(T in 1:n_max){
+    cond2_all[T,] <- temp2 + eeg_noise(frames = Nf, srate = 100, outvar = outvar, meanpower)
+    cond1_all[T,] <- temp1 + eeg_noise(frames = Nf, srate = 100, outvar = outvar, meanpower) 
+  }
+  
+  for(N in 1:n_length){
+    
+    Nt <- n_vec[N]
+    
+    # downsample to current size
+    cond2 <- cond2_all[1:Nt,]
+    cond1 <- cond1_all[1:Nt,]
+    
+    # t-tests
+    ori.t2 <- vector(mode = "numeric", length = Nf)
+    for(F in 1:Nf){
+      ori.t2[F] <- t.test(cond1[,F], cond2[,F])$statistic^2
+    }
+    # fit change point model
+    res <- cpt.meanvar(ori.t2, method = "BinSeg", Q=2)
+    simres.cp[N,S] <- Xf[res@cpts[1]]
+    
+    # Make permutation table of t values 
+    perm.t2 <- permtdist(cond1, cond2, Nt, Nf, nboot = nboot)^2
+    perm.th <- apply(perm.t2, 2, quantile, probs = 1-aath)
+    
+    # FDR -----
+    perm.pvals <- vector(mode = "numeric", length = Nf)
+    for(F in 1:Nf){
+      perm.pvals[F] <- (sum(perm.t2[,F] >= ori.t2[F]) + 1) / (nboot + 1)
+    }
+    fdr.pvals <- p.adjust(perm.pvals, method = "fdr")
+    simres.fdr[N,S] <- Xf[which(fdr.pvals <= aath)[1]]
+    
+    # MAX -----
+    max.th <- quantile(apply(perm.t2, 1, max), probs = 1-aath)
+    simres.max[N,S] <- Xf[which(ori.t2 >= max.th)[1]]
+    
+    # cluster-sum statistics -----
+    cmap <- cluster.make(perm.pvals <= aath)
+    perm.max.sums <- vector(mode = "numeric", length = nboot)
+    for(B in 1:nboot){
+      # threshold permutation t2 values and form clusters
+      perm.cmap <- cluster.make(perm.t2[B,] <= perm.th)  
+      perm.max.sums[B] <- max(cluster.sum(values = perm.t2[B,], cmap = perm.cmap))
+    }
+    # cluster sum threshold
+    cs.th <- quantile(perm.max.sums, probs = 1-aath)
+    # cluster test
+    cs.test <- cluster.test(values = ori.t2, cmap = cmap, cs.th)
+    simres.cs[N,S] <- Xf[cs.test][1]
+  }
+}
+
+save(simres.cs, simres.max, simres.fdr, simres.cp,
+     file = "./data/onsetsim_varyn_eegnoise.RData")
+```
+
+## Results
+
+Plot results as a function of sample size.
+
+### Compute summary statistics
+```{r}
+load(file = "./data/onsetsim_varyn_eegnoise.RData")
+
+n_vec <- seq(20,150,10) 
+n_length <- length(n_vec)
+
+res.bias <- matrix(0, nrow = 4, ncol = n_length) 
+res.mae <- matrix(0, nrow = 4, ncol = n_length)
+res.pte <- matrix(0, nrow = 4, ncol = n_length)
+res.p40 <- matrix(0, nrow = 4, ncol = n_length)
+
+for(N in 1:n_length){
+  #Bias
+  res.bias[1,N] <- median(simres.fdr[N,], na.rm = TRUE) - true_onset
+  res.bias[2,N] <- median(simres.max[N,], na.rm = TRUE) - true_onset
+  res.bias[3,N] <- median(simres.cs[N,], na.rm = TRUE) - true_onset
+  res.bias[4,N] <- median(simres.cp[N,], na.rm = TRUE) - true_onset
+  
+  #Mean absolute error 
+  res.mae[1,N] <- mean(abs(simres.fdr[N,] - true_onset), na.rm = TRUE)
+  res.mae[2,N] <- mean(abs(simres.max[N,] - true_onset), na.rm = TRUE)
+  res.mae[3,N] <- mean(abs(simres.cs[N,] - true_onset), na.rm = TRUE)
+  res.mae[4,N] <- mean(abs(simres.cp[N,] - true_onset), na.rm = TRUE)
+  
+  #Proportion too early
+  res.pte[1,N] <- mean((simres.fdr[N,] - true_onset) < 0, na.rm = TRUE)
+  res.pte[2,N] <- mean((simres.max[N,] - true_onset) < 0, na.rm = TRUE)
+  res.pte[3,N] <- mean((simres.cs[N,] - true_onset) < 0, na.rm = TRUE)
+  res.pte[4,N] <- mean((simres.cp[N,] - true_onset) < 0, na.rm = TRUE)
+  
+  #Underestimations of at least 40 ms
+  res.p40[1,N] <- mean((simres.fdr[N,] - true_onset) <= -40, na.rm = TRUE)
+  res.p40[2,N] <- mean((simres.max[N,] - true_onset) <= -40, na.rm = TRUE)
+  res.p40[3,N] <- mean((simres.cs[N,] - true_onset) <= -40, na.rm = TRUE)
+  res.p40[4,N] <- mean((simres.cp[N,] - true_onset) <= -40, na.rm = TRUE)
+}
+```
+
+### Make figures 
+
+#### Bias
+
+```{r}
+# Colour palette from http://www.cookbook-r.com/Graphs/Colors_(ggplot2)/
+categ.palette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+df <- tibble(res = as.vector(res.bias),
+             n = rep(n_vec, each = 4),
+             method = rep(c("FDR", "MAX", "Cluster sum", "Change point"), n_length)
+)
+
+ggplot(df, aes(x = n, y = res, group = method, colour = method)) + theme_gar +
+  geom_point() +
+  geom_line() +
+  scale_colour_manual(values = categ.palette) +
+  labs(x = "Sample size", y = "Bias") +
+  theme(legend.position = c(.8, .8)) +
+  scale_x_continuous(breaks = n_vec) +
+  scale_y_continuous(breaks = seq(0,70,10))
+
+ggsave(filename = "./figures/eeg_varyn_bias.pdf", width = 10, height = 5)
+```
+
+#### MAE
+
+```{r}
+df <- tibble(res = as.vector(res.mae),
+             n = rep(n_vec, each = 4),
+             method = rep(c("FDR", "MAX", "Cluster sum", "Change point"), n_length)
+)
+
+ggplot(df, aes(x = n, y = res, group = method, colour = method)) + theme_gar +
+  geom_point() +
+  geom_line() +
+  scale_colour_manual(values = categ.palette) +
+  labs(x = "Sample size", y = "MAE") +
+  theme(legend.position = c(.8, .8)) +
+  scale_x_continuous(breaks = n_vec) +
+  scale_y_continuous(breaks = seq(0,70,10))
+
+ggsave(filename = "./figures/eeg_varyn_mae.pdf", width = 10, height = 5)
+```
+
+#### Proportion too early
+
+```{r}
+df <- tibble(res = as.vector(res.pte),
+             n = rep(n_vec, each = 4),
+             method = rep(c("FDR", "MAX", "Cluster sum", "Change point"), n_length)
+)
+
+ggplot(df, aes(x = n, y = res, group = method, colour = method)) + theme_gar +
+  geom_point() +
+  geom_line() +
+  scale_colour_manual(values = categ.palette) +
+  labs(x = "Sample size", y = "Proportion too early") +
+    theme(legend.position = c(.8, .4)) +
+  scale_x_continuous(breaks = n_vec) 
+  # scale_y_continuous(breaks = seq(0,70,10))
+
+ggsave(filename = "./figures/eeg_varyn_pte.pdf", width = 10, height = 5)
+```
+
+#### Proportion < 40 ms
+
+```{r}
+df <- tibble(res = as.vector(res.p40),
+             gamma = rep(n_vec, each = 4),
+             method = rep(c("FDR", "MAX", "Cluster sum", "Change point"), gamma_length)
+)
+
+ggplot(df, aes(x = n, y = res, group = method, colour = method)) + theme_gar +
+  geom_point() +
+  geom_line() +
+  scale_colour_manual(values = categ.palette) +
+  labs(x = "Sample size", y = "Proportion < 40ms") +
+  scale_x_continuous(breaks = n_vec)
+```
+
+# References
+
+Yeung, N., Bogacz, R., Holroyd, C.B., & Cohen, J.D. (2004) Detection of synchronized oscillations in the electroencephalogram: An evaluation of methods. Psychophysiology, 41, 822–832.
+
