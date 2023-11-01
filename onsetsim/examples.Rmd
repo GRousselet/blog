@@ -284,7 +284,7 @@ for(F in 1:Nf){
 }
 
 df <- tibble(x = Xf,
-             y = t2)
+             y = ori.t2)
 ggplot(df, aes(x, y)) + theme_gar +
   geom_line(linewidth = 1) +
   geom_vline(xintercept = true_onset) +
